@@ -12,12 +12,15 @@ export function Button({ label, variant = 'primary', disabled, style, ...rest }:
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
-      style={(state) => [
-        styles.base,
-        variant === 'primary' ? styles.primary : styles.secondary,
-        (disabled || state.pressed) && styles.dim,
-        typeof style === 'function' ? style(state) : style,
-      ]}
+      // Flattened so the button also works inside <Link asChild>.
+      style={(state) =>
+        StyleSheet.flatten([
+          styles.base,
+          variant === 'primary' ? styles.primary : styles.secondary,
+          (disabled || state.pressed) && styles.dim,
+          typeof style === 'function' ? style(state) : style,
+        ])
+      }
       {...rest}>
       <Text style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}>{label}</Text>
     </Pressable>

@@ -34,7 +34,8 @@ export default function TownMapScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${place.name}: ${place.blurb}`}
-                style={[
+                // Link's asChild can't take a style array, so pass one flat object.
+                style={StyleSheet.flatten([
                   styles.place,
                   {
                     left: `${place.x * 100}%`,
@@ -42,7 +43,7 @@ export default function TownMapScreen() {
                     width: `${PLACE_SIZE * 100}%`,
                     backgroundColor: place.color,
                   },
-                ]}>
+                ])}>
                 <ThemedText type="smallBold" style={styles.placeName}>
                   {place.name}
                 </ThemedText>
