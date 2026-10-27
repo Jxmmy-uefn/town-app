@@ -17,12 +17,15 @@ import { useFinishGame } from '@/lib/use-finish-game';
 const FALLER_SIZE = 36;
 const MAX_STEP = 0.05;
 const BANNER_MS = 1500;
+const COUNTDOWN = ['3', '2', '1', 'Go!'];
+const COUNTDOWN_STEP_MS = 800;
 
-type Status = 'ready' | 'playing' | 'over';
+type Status = 'ready' | 'countdown' | 'playing' | 'over';
 
 export default function CatchGameScreen() {
   const [status, setStatus] = useState<Status>('ready');
   const [banner, setBanner] = useState<string | null>(null);
+  const [count, setCount] = useState(0);
   const [game, setGame] = useState<CatchState>(createCatchState);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const basketX = useRef(0.5);
@@ -58,9 +61,7 @@ export default function CatchGameScreen() {
       const before = state.phase;
       state = stepCatch(state, dt, basketX.current);
       if (state.phase !== before) {
-        setBanner(
-          state.phase > before ? `Phase ${state.phase + 1}! Faster, more points` : `Back to phase ${state.phase + 1}`,
-        );
+        setBanner(`Phase ${state.phase + 1}! Faster, more points`);
         clearTimeout(bannerTimer);
         bannerTimer = setTimeout(() => setBanner(null), BANNER_MS);
       }
@@ -80,13 +81,24 @@ export default function CatchGameScreen() {
     };
   }, [status]);
 
+  // 3, 2, 1, Go! The basket can already be moved so the player can line up.
+  useEffect(() => {
+    if (status !== 'countdown') return;
+    const timer = setTimeout(() => {
+      if (count < COUNTDOWN.length - 1) setCount(count + 1);
+      else setStatus('playing');
+    }, COUNTDOWN_STEP_MS);
+    return () => clearTimeout(timer);
+  }, [status, count]);
+
   const start = useCallback(() => {
     reset();
     basketX.current = 0.5;
     setBasketPos(0.5);
     setBanner(null);
     setGame(createCatchState());
-    setStatus('playing');
+    setCount(0);
+    setStatus('countdown');
   }, [reset]);
 
   return (
@@ -100,8 +112,8 @@ export default function CatchGameScreen() {
       <View
         style={styles.area}
         onLayout={onLayout}
-        onStartShouldSetResponder={() => status === 'playing'}
-        onMoveShouldSetResponder={() => status === 'playing'}
+        onStartShouldSetResponder={() => status === 'playing' || status === 'countdown'}
+        onMoveShouldSetResponder={() => status === 'playing' || status === 'countdown'}
         onResponderGrant={(e) => moveBasket(e.nativeEvent.locationX)}
         onResponderMove={(e) => moveBasket(e.nativeEvent.locationX)}>
         {game.fallers.map((faller) => (
@@ -129,6 +141,11 @@ export default function CatchGameScreen() {
           <Text style={styles.basketEmoji}>🧺</Text>
         </View>
 
+        {status === 'countdown' && (
+          <View style={styles.banner}>
+            <Text style={styles.countdown}>{COUNTDOWN[count]}</Text>
+          </View>
+        )}
         {banner && (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>{banner}</Text>
@@ -148,7 +165,7 @@ export default function CatchGameScreen() {
               treats hit the ground. Stars are worth 50.
             </ThemedText>
             <ThemedText style={styles.center}>
-              Play well and you move up a phase: things fall faster, but every catch is worth more.
+              Play well and you move up a phase: things fall faster, but every catch is worth more. There are 5 phases.
             </ThemedText>
             <ThemedText type="smallBold" style={styles.center}>
               Tap anywhere to start
@@ -214,6 +231,11 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     pointerEvents: 'none',
+  },
+  countdown: {
+    fontSize: 96,
+    fontWeight: 900,
+    color: '#E8735A',
   },
   bannerText: {
     fontSize: 22,

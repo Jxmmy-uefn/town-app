@@ -34,9 +34,6 @@ export const PHASES: Phase[] = [
 export const PROMOTE_WINDOW = 10;
 /** Share of those results that must be good to move up. */
 export const PROMOTE_RATE = 0.9;
-/** This many mistakes within the last DEMOTE_WINDOW results drops a phase. */
-export const DEMOTE_MISTAKES = 2;
-export const DEMOTE_WINDOW = 5;
 
 export type CatchState = {
   fallers: Faller[];
@@ -93,15 +90,10 @@ function spawn(id: number, phase: Phase, rng: () => number): Faller {
 }
 
 /**
- * Adjusts the phase from recent results: move up after PROMOTE_WINDOW results that are at least
- * PROMOTE_RATE good, move down after DEMOTE_MISTAKES mistakes close together. Either way the
- * record starts over so each phase is judged on its own.
+ * Moves up a phase after PROMOTE_WINDOW results that are at least PROMOTE_RATE good, then starts
+ * the record over so each phase is judged on its own. Phases never go back down.
  */
 export function nextPhase(phase: number, recent: boolean[]): { phase: number; recent: boolean[] } {
-  const lastFew = recent.slice(-DEMOTE_WINDOW);
-  if (phase > 0 && lastFew.filter((good) => !good).length >= DEMOTE_MISTAKES) {
-    return { phase: phase - 1, recent: [] };
-  }
   if (phase < PHASES.length - 1 && recent.length >= PROMOTE_WINDOW) {
     const window = recent.slice(-PROMOTE_WINDOW);
     if (window.filter(Boolean).length / PROMOTE_WINDOW >= PROMOTE_RATE) {

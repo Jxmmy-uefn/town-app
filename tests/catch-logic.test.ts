@@ -79,9 +79,9 @@ test('a phase needs a full window of results before moving up', () => {
   assert.equal(nextPhase(0, Array(PROMOTE_WINDOW - 1).fill(true)).phase, 0);
 });
 
-test('two quick mistakes drop back a phase, but never below the first', () => {
-  assert.deepEqual(nextPhase(2, [true, false, true, false]), { phase: 1, recent: [] });
-  assert.equal(nextPhase(0, [false, false]).phase, 0);
+test('mistakes never drop you back a phase', () => {
+  assert.equal(nextPhase(2, [true, false, true, false]).phase, 2);
+  assert.equal(nextPhase(3, Array(PROMOTE_WINDOW).fill(false)).phase, 3);
 });
 
 test('the last phase is the hardest and stays put', () => {
