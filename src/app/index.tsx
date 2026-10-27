@@ -2,27 +2,35 @@ import { Link } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvatarFigure } from '@/components/avatar-figure';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PLACES } from '@/constants/places';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { useGame } from '@/lib/game-store';
 
 const PLACE_SIZE = 0.37;
 
 export default function TownMapScreen() {
   const { player, signOut } = useAuth();
+  const { coins, avatar } = useGame();
 
   return (
     <ThemedView style={styles.fill}>
       <SafeAreaView style={styles.fill}>
         <View style={styles.header}>
-          <View>
-            <ThemedText type="smallBold">{player?.username}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {player?.coins ?? 0} coins
-            </ThemedText>
-          </View>
+          <Link href="/avatar" asChild>
+            <Pressable accessibilityRole="button" accessibilityLabel="Change your look" style={styles.me}>
+              <AvatarFigure avatar={avatar} size={44} />
+              <View>
+                <ThemedText type="smallBold">{player?.username}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {coins} coins
+                </ThemedText>
+              </View>
+            </Pressable>
+          </Link>
           <Pressable onPress={signOut} accessibilityRole="button">
             <ThemedText type="linkPrimary">Sign out</ThemedText>
           </Pressable>
@@ -68,6 +76,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
+  me: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   map: {
     flex: 1,
     margin: Spacing.three,

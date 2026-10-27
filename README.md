@@ -17,7 +17,7 @@ Built with [Expo](https://expo.dev) (React Native) for Android and iPhone, and [
 
 4. Scan the QR code it shows with Expo Go. Your phone and computer need to be on the same Wi-Fi.
 
-With no server set up, the app opens in **demo mode**: you can walk around the town map, but nothing is saved.
+With no server set up, the app opens in **demo mode**. Everything works, and your coins, items and room are saved on your phone only.
 
 ## Connect a server (Supabase)
 
@@ -32,7 +32,11 @@ With no server set up, the app opens in **demo mode**: you can walk around the t
 | --- | --- |
 | `src/app/` | Screens. Each file is a screen; `index.tsx` is the town map. |
 | `src/constants/places.ts` | The places on the town map and where they sit. |
-| `src/lib/` | Sign-in, the Supabase client and the age check. |
+| `src/games/` | Rules for the minigames, kept separate from the screens so they can be tested. |
+| `src/constants/items.ts` | Shop items and their placeholder emoji art. |
+| `src/lib/game-store.tsx` | Coins, items, your room and your avatar, saved on the phone in demo mode or in Supabase. |
+| `src/lib/` (other files) | Sign-in, the Supabase client, the age check and coin payouts. |
+| `tests/` | Tests for the game rules. Run them with `npm test`. |
 | `supabase/migrations/` | Database tables and the rules for who can read and change what. |
 | `supabase/seed.sql` | Starter shop items and chat phrases. |
 

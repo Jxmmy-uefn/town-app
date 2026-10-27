@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { GameProvider } from '@/lib/game-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,9 @@ function RootStack() {
         <Stack.Screen name="town-hall" options={{ title: 'Town Hall' }} />
         <Stack.Screen name="park" options={{ title: 'Park' }} />
         <Stack.Screen name="house" options={{ title: 'Your House' }} />
+        <Stack.Screen name="avatar" options={{ title: 'Your Look' }} />
+        <Stack.Screen name="games/catch" options={{ title: 'Catch!' }} />
+        <Stack.Screen name="games/match3" options={{ title: 'Fruit Match' }} />
       </Stack.Protected>
     </Stack>
   );
@@ -39,7 +43,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
-        <RootStack />
+        <GameProvider>
+          <RootStack />
+        </GameProvider>
       </AuthProvider>
     </ThemeProvider>
   );
