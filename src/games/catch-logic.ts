@@ -1,7 +1,8 @@
 // Pure rules for the catch game. Positions are fractions of the play area (0 to 1),
 // so the same game plays the same on any screen size.
 
-export type FallerKind = 'treat' | 'star' | 'rock';
+export type PowerKind = 'magnet' | 'slow' | 'shield' | 'life';
+export type FallerKind = 'treat' | 'star' | 'golden' | 'rock' | 'power';
 
 export type Faller = {
   id: number;
@@ -10,10 +11,15 @@ export type Faller = {
   x: number;
   y: number;
   speed: number;
+  power?: PowerKind;
 };
 
-/** One difficulty level. Phases step up as the player does well. */
+/** One difficulty level. Phases step up as the player does well, and each has its own look. */
 export type Phase = {
+  name: string;
+  /** Background color of the play area. */
+  sky: string;
+  treats: string[];
   /** Seconds between drops. */
   interval: number;
   /** Fall speed in screen heights per second. */
@@ -23,17 +29,61 @@ export type Phase = {
 };
 
 export const PHASES: Phase[] = [
-  { interval: 1.0, speed: 0.3, rockChance: 0.1, starChance: 0.05 },
-  { interval: 0.85, speed: 0.38, rockChance: 0.15, starChance: 0.05 },
-  { interval: 0.7, speed: 0.46, rockChance: 0.2, starChance: 0.06 },
-  { interval: 0.58, speed: 0.55, rockChance: 0.25, starChance: 0.07 },
-  { interval: 0.48, speed: 0.65, rockChance: 0.3, starChance: 0.08 },
+  { name: 'Morning orchard', sky: '#CDEBFA', treats: ['🍎', '🍓', '🍐', '🍊', '🍌'], interval: 1.0, speed: 0.3, rockChance: 0.1, starChance: 0.05 },
+  { name: 'Bakery afternoon', sky: '#FBE7C6', treats: ['🍪', '🧁', '🍩', '🥐', '🥨'], interval: 0.85, speed: 0.38, rockChance: 0.15, starChance: 0.05 },
+  { name: 'Sunset sweets', sky: '#F9C6B4', treats: ['🍬', '🍭', '🍫', '🍡', '🍮'], interval: 0.7, speed: 0.46, rockChance: 0.2, starChance: 0.06 },
+  { name: 'Starry night', sky: '#3B4A7A', treats: ['🍰', '🎂', '🥧', '🍨', '🍦'], interval: 0.58, speed: 0.55, rockChance: 0.25, starChance: 0.07 },
+  { name: 'Snow festival', sky: '#E4EEF6', treats: ['🎁', '🍬', '🍪', '🥛', '🍫'], interval: 0.48, speed: 0.65, rockChance: 0.3, starChance: 0.08 },
 ];
+
+export const POWERS: Record<PowerKind, { emoji: string; label: string }> = {
+  magnet: { emoji: '🧲', label: 'Magnet' },
+  slow: { emoji: '🐢', label: 'Slow-mo' },
+  shield: { emoji: '🛡️', label: 'Shield' },
+  life: { emoji: '❤️', label: 'Extra life' },
+};
+
+export const BASKET_WIDTH = 0.24;
+export const BASKET_TOP = 0.86;
+export const BASKET_DEPTH = 0.06;
+export const STARTING_LIVES = 3;
+export const MAX_LIVES = 5;
 
 /** How many recent results decide whether to move up a phase. */
 export const PROMOTE_WINDOW = 10;
 /** Share of those results that must be good to move up. */
 export const PROMOTE_RATE = 0.9;
+
+export const GOLDEN_CHANCE = 0.02;
+export const GOLDEN_SPEED = 1.6;
+export const POWER_CHANCE = 0.05;
+export const POWER_SECONDS = 6;
+/** Slow-mo multiplies fall speed and stretches the time between drops. */
+export const SLOW_FACTOR = 0.5;
+/** How fast the magnet pulls treats sideways, in screen widths per second. */
+export const MAGNET_PULL = 0.9;
+/** A combo bonus every this many catches in a row. */
+export const COMBO_STEP = 5;
+export const COMBO_POINTS_PER_CATCH = 5;
+
+const POINTS: Record<'treat' | 'star' | 'golden', number> = { treat: 10, star: 50, golden: 100 };
+const MAX_SPEED_JITTER = 0.15;
+// Extra lives are rarer than the other power-ups.
+const POWER_WEIGHTS: [PowerKind, number][] = [
+  ['magnet', 0.3],
+  ['slow', 0.3],
+  ['shield', 0.3],
+  ['life', 0.1],
+];
+
+/** Something that just happened, for the screen to show and play sounds for. */
+export type CatchEvent =
+  | { type: 'catch'; x: number; points: number; kind: 'treat' | 'star' | 'golden' }
+  | { type: 'combo'; streak: number; points: number }
+  | { type: 'power'; x: number; power: PowerKind }
+  | { type: 'rock'; blocked: boolean }
+  | { type: 'drop' }
+  | { type: 'phase'; phase: number };
 
 export type CatchState = {
   fallers: Faller[];
@@ -47,16 +97,15 @@ export type CatchState = {
   phase: number;
   /** Results since entering this phase, newest last: true for a catch or a dodged rock. */
   recent: boolean[];
+  /** Catches in a row without a mistake. */
+  streak: number;
+  /** Seconds left on timed power-ups. */
+  magnet: number;
+  slow: number;
+  shield: boolean;
+  /** What happened during the last step only. */
+  events: CatchEvent[];
 };
-
-export const BASKET_WIDTH = 0.24;
-export const BASKET_TOP = 0.86;
-export const BASKET_DEPTH = 0.06;
-export const STARTING_LIVES = 3;
-
-const TREATS = ['🍎', '🍓', '🍪', '🧁', '🍩'];
-const POINTS: Record<FallerKind, number> = { treat: 10, star: 50, rock: 0 };
-const MAX_SPEED_JITTER = 0.15;
 
 export function createCatchState(): CatchState {
   return {
@@ -64,29 +113,75 @@ export function createCatchState(): CatchState {
     score: 0,
     lives: STARTING_LIVES,
     elapsed: 0,
-    // Drop the first treat right away so the game starts the moment you tap.
+    // Drop the first treat right away so the game starts the moment the countdown ends.
     untilSpawn: 0,
     nextId: 1,
     over: false,
     phase: 0,
     recent: [],
+    streak: 0,
+    magnet: 0,
+    slow: 0,
+    shield: false,
+    events: [],
   };
+}
+
+function pick<T>(items: T[], rng: () => number): T {
+  return items[Math.floor(rng() * items.length)];
+}
+
+function pickPower(rng: () => number): PowerKind {
+  let roll = rng();
+  for (const [kind, weight] of POWER_WEIGHTS) {
+    if (roll < weight) return kind;
+    roll -= weight;
+  }
+  return 'magnet';
 }
 
 function spawn(id: number, phase: Phase, rng: () => number): Faller {
   const roll = rng();
-  const kind: FallerKind =
-    roll < phase.rockChance ? 'rock' : roll < phase.rockChance + phase.starChance ? 'star' : 'treat';
-  const emoji = kind === 'rock' ? '🪨' : kind === 'star' ? '⭐' : TREATS[Math.floor(rng() * TREATS.length)];
+  let kind: FallerKind = 'treat';
+  let threshold = phase.rockChance;
+  if (roll < threshold) kind = 'rock';
+  else if (roll < (threshold += phase.starChance)) kind = 'star';
+  else if (roll < (threshold += GOLDEN_CHANCE)) kind = 'golden';
+  else if (roll < (threshold += POWER_CHANCE)) kind = 'power';
+
+  const power = kind === 'power' ? pickPower(rng) : undefined;
+  const emoji =
+    kind === 'rock'
+      ? '🪨'
+      : kind === 'star'
+        ? '⭐'
+        : kind === 'golden'
+          ? '🌟'
+          : power
+            ? POWERS[power].emoji
+            : pick(phase.treats, rng);
+
   return {
     id,
     kind,
     emoji,
+    power,
     x: 0.08 + rng() * 0.84,
     // Start just below the top edge so it's visible immediately.
     y: 0.02,
-    speed: phase.speed * (1 - MAX_SPEED_JITTER + rng() * MAX_SPEED_JITTER * 2),
+    speed:
+      phase.speed *
+      (kind === 'golden' ? GOLDEN_SPEED : 1) *
+      (1 - MAX_SPEED_JITTER + rng() * MAX_SPEED_JITTER * 2),
   };
+}
+
+export function isCaught(faller: Faller, basketX: number) {
+  return (
+    faller.y >= BASKET_TOP &&
+    faller.y <= BASKET_TOP + BASKET_DEPTH &&
+    Math.abs(faller.x - basketX) <= BASKET_WIDTH / 2
+  );
 }
 
 /**
@@ -103,53 +198,110 @@ export function nextPhase(phase: number, recent: boolean[]): { phase: number; re
   return { phase, recent };
 }
 
-export function isCaught(faller: Faller, basketX: number) {
-  return (
-    faller.y >= BASKET_TOP &&
-    faller.y <= BASKET_TOP + BASKET_DEPTH &&
-    Math.abs(faller.x - basketX) <= BASKET_WIDTH / 2
-  );
+/** The combo bonus for reaching this streak, or 0 when it isn't a milestone. */
+export function comboBonus(streak: number) {
+  return streak > 0 && streak % COMBO_STEP === 0 ? streak * COMBO_POINTS_PER_CATCH : 0;
 }
 
 /**
  * Advances the game by dt seconds with the basket centered at basketX.
- * Catching a treat scores (more in later phases); catching a rock or dropping a treat costs a life.
+ * Catching treats scores (more in later phases and on combos); catching a rock or dropping a
+ * treat costs a life and ends the combo. Power-ups help for a few seconds.
  */
 export function stepCatch(state: CatchState, dt: number, basketX: number, rng = Math.random): CatchState {
-  if (state.over) return state;
+  if (state.over) return { ...state, events: [] };
 
-  let { score, lives, untilSpawn, nextId } = state;
+  let { score, lives, untilSpawn, nextId, streak, shield } = state;
+  let magnet = Math.max(0, state.magnet - dt);
+  let slow = Math.max(0, state.slow - dt);
+  const multiplier = state.phase + 1;
   const elapsed = state.elapsed + dt;
   const fallers: Faller[] = [];
   const results: boolean[] = [];
+  const events: CatchEvent[] = [];
+  const speedFactor = state.slow > 0 ? SLOW_FACTOR : 1;
+
+  const mistake = () => {
+    lives -= 1;
+    streak = 0;
+    results.push(false);
+  };
 
   for (const faller of state.fallers) {
-    const moved = { ...faller, y: faller.y + faller.speed * dt };
+    const moved = { ...faller, y: faller.y + faller.speed * speedFactor * dt };
+    if (state.magnet > 0 && moved.kind !== 'rock') {
+      const pull = Math.min(Math.abs(basketX - moved.x), MAGNET_PULL * dt);
+      moved.x += Math.sign(basketX - moved.x) * pull;
+    }
+
     if (isCaught(moved, basketX)) {
       if (moved.kind === 'rock') {
-        lives -= 1;
-        results.push(false);
-      } else {
-        score += POINTS[moved.kind] * (state.phase + 1);
+        if (shield) {
+          shield = false;
+          events.push({ type: 'rock', blocked: true });
+          results.push(true);
+        } else {
+          mistake();
+          events.push({ type: 'rock', blocked: false });
+        }
+      } else if (moved.kind === 'power') {
+        const power = moved.power!;
+        if (power === 'magnet') magnet = POWER_SECONDS;
+        else if (power === 'slow') slow = POWER_SECONDS;
+        else if (power === 'shield') shield = true;
+        else lives = Math.min(MAX_LIVES, lives + 1);
         results.push(true);
+        events.push({ type: 'power', x: moved.x, power });
+      } else {
+        const points = POINTS[moved.kind] * multiplier;
+        score += points;
+        streak += 1;
+        results.push(true);
+        events.push({ type: 'catch', x: moved.x, points, kind: moved.kind });
+        const bonus = comboBonus(streak) * multiplier;
+        if (bonus) {
+          score += bonus;
+          events.push({ type: 'combo', streak, points: bonus });
+        }
       }
     } else if (moved.y > 1) {
-      if (moved.kind !== 'rock') lives -= 1;
-      results.push(moved.kind === 'rock');
+      if (moved.kind === 'rock') {
+        results.push(true);
+      } else if (moved.kind !== 'power') {
+        mistake();
+        events.push({ type: 'drop' });
+      }
+      // A missed power-up is no penalty.
     } else {
       fallers.push(moved);
     }
   }
 
   const { phase, recent } = nextPhase(state.phase, [...state.recent, ...results]);
+  if (phase !== state.phase) events.push({ type: 'phase', phase });
 
   untilSpawn -= dt;
   if (untilSpawn <= 0) {
     fallers.push(spawn(nextId, PHASES[phase], rng));
     nextId += 1;
-    untilSpawn = PHASES[phase].interval;
+    untilSpawn = PHASES[phase].interval / (slow > 0 ? SLOW_FACTOR : 1);
   }
 
   lives = Math.max(0, lives);
-  return { fallers, score, lives, elapsed, untilSpawn, nextId, over: lives === 0, phase, recent };
+  return {
+    fallers,
+    score,
+    lives,
+    elapsed,
+    untilSpawn,
+    nextId,
+    over: lives === 0,
+    phase,
+    recent,
+    streak,
+    magnet,
+    slow,
+    shield,
+    events,
+  };
 }

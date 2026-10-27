@@ -5,7 +5,11 @@ import { test } from 'node:test';
 
 import {
   BASKET_TOP,
+  COMBO_STEP,
+  comboBonus,
   createCatchState,
+  MAX_LIVES,
+  POWER_SECONDS,
   nextPhase,
   PHASES,
   PROMOTE_WINDOW,
@@ -57,7 +61,9 @@ test('the game ends at zero lives and then stops changing', () => {
   const last = { ...withFaller({ kind: 'rock' }), lives: 1 };
   const over = stepCatch(last, 0.05, 0.5, never);
   assert.equal(over.over, true);
-  assert.equal(stepCatch(over, 1, 0.5, never), over);
+  const after = stepCatch(over, 1, 0.5, never);
+  assert.equal(after.score, over.score);
+  assert.deepEqual(after.fallers, over.fallers);
 });
 
 test('the first treat drops as soon as the game starts', () => {
@@ -115,4 +121,103 @@ test('new things drop on a timer', () => {
   let state = createCatchState();
   for (let i = 0; i < 60; i++) state = stepCatch(state, 1 / 30, 0.5, () => 0.5);
   assert.ok(state.nextId > 1);
+});
+
+function catchOne(state: CatchState, faller: Partial<Faller> = {}): CatchState {
+  return stepCatch(
+    {
+      ...state,
+      untilSpawn: 100,
+      fallers: [{ id: 99, kind: 'treat', emoji: '🍎', x: 0.5, y: BASKET_TOP - 0.01, speed: 0.5, ...faller }],
+    },
+    0.05,
+    0.5,
+    never,
+  );
+}
+
+test('every 5 catches in a row pays a combo bonus', () => {
+  assert.equal(comboBonus(COMBO_STEP - 1), 0);
+  assert.equal(comboBonus(COMBO_STEP), 25);
+  assert.equal(comboBonus(COMBO_STEP * 2), 50);
+
+  let state = createCatchState();
+  for (let i = 0; i < COMBO_STEP; i++) state = catchOne(state);
+  assert.equal(state.streak, COMBO_STEP);
+  assert.equal(state.score, 10 * COMBO_STEP + 25);
+  assert.ok(state.events.some((e) => e.type === 'combo' && e.streak === COMBO_STEP));
+});
+
+test('a mistake ends the combo', () => {
+  let state = catchOne(catchOne(createCatchState()));
+  state = catchOne(state, { kind: 'rock', emoji: '🪨' });
+  assert.equal(state.streak, 0);
+});
+
+test('a golden treat is worth 100', () => {
+  const state = catchOne(createCatchState(), { kind: 'golden', emoji: '🌟' });
+  assert.equal(state.score, 100);
+});
+
+test('a shield blocks one rock', () => {
+  let state = catchOne(createCatchState(), { kind: 'power', power: 'shield', emoji: '🛡️' });
+  assert.equal(state.shield, true);
+  state = catchOne(state, { kind: 'rock', emoji: '🪨' });
+  assert.equal(state.lives, STARTING_LIVES);
+  assert.equal(state.shield, false);
+  state = catchOne(state, { kind: 'rock', emoji: '🪨' });
+  assert.equal(state.lives, STARTING_LIVES - 1);
+});
+
+test('an extra life adds a heart, up to the maximum', () => {
+  let state = catchOne(createCatchState(), { kind: 'power', power: 'life', emoji: '❤️' });
+  assert.equal(state.lives, STARTING_LIVES + 1);
+  for (let i = 0; i < 5; i++) state = catchOne(state, { kind: 'power', power: 'life', emoji: '❤️' });
+  assert.equal(state.lives, MAX_LIVES);
+});
+
+test('slow-mo halves the fall speed for a few seconds', () => {
+  const slowed = catchOne(createCatchState(), { kind: 'power', power: 'slow', emoji: '🐢' });
+  assert.ok(slowed.slow > POWER_SECONDS - 0.1);
+  const faller: Faller = { id: 1, kind: 'treat', emoji: '🍎', x: 0.1, y: 0.2, speed: 0.4 };
+  const normal = stepCatch({ ...createCatchState(), untilSpawn: 100, fallers: [faller] }, 0.1, 0.9, never);
+  const slow = stepCatch({ ...slowed, untilSpawn: 100, fallers: [faller] }, 0.1, 0.9, never);
+  assert.ok(Math.abs(normal.fallers[0].y - 0.24) < 1e-9);
+  assert.ok(Math.abs(slow.fallers[0].y - 0.22) < 1e-9);
+});
+
+test('the magnet pulls treats toward the basket but not rocks', () => {
+  const magnet = { ...createCatchState(), magnet: 3, untilSpawn: 100 };
+  const next = stepCatch(
+    {
+      ...magnet,
+      fallers: [
+        { id: 1, kind: 'treat', emoji: '🍎', x: 0.1, y: 0.2, speed: 0.4 },
+        { id: 2, kind: 'rock', emoji: '🪨', x: 0.1, y: 0.2, speed: 0.4 },
+      ],
+    },
+    0.1,
+    0.9,
+    never,
+  );
+  assert.ok(next.fallers[0].x > 0.1);
+  assert.equal(next.fallers[1].x, 0.1);
+});
+
+test('missing a power-up is not a mistake', () => {
+  const next = stepCatch(
+    { ...createCatchState(), untilSpawn: 100, fallers: [{ id: 1, kind: 'power', power: 'magnet', emoji: '🧲', x: 0.1, y: 0.99, speed: 0.5 }] },
+    0.1,
+    0.9,
+    never,
+  );
+  assert.equal(next.lives, STARTING_LIVES);
+});
+
+test('each phase has its own look and treats', () => {
+  for (const phase of PHASES) {
+    assert.ok(phase.name && phase.sky && phase.treats.length > 0);
+  }
+  const state = catchOne({ ...createCatchState(), recent: Array(PROMOTE_WINDOW - 1).fill(true) });
+  assert.ok(state.events.some((e) => e.type === 'phase' && e.phase === 1));
 });
