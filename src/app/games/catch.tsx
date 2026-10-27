@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
+import { CatchScenery, sceneSky } from '@/components/catch-scenery';
 import { GameOver } from '@/components/game-over';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,6 +10,7 @@ import {
   BASKET_TOP,
   BASKET_WIDTH,
   createCatchState,
+  GLITCH_PHASE,
   GLITCH_SECONDS,
   PHASES,
   POWERS,
@@ -219,7 +221,9 @@ export default function CatchGameScreen() {
     <ThemedView style={styles.fill}>
       <View style={styles.hud}>
         <ThemedText type="smallBold">Score {game.score}</ThemedText>
-        <ThemedText type="smallBold">Phase {game.phase + 1}</ThemedText>
+        <ThemedText type="smallBold">
+          Phase {game.phase + 1}/{PHASES.length}
+        </ThemedText>
         <View style={styles.hudRight}>
           <Text style={styles.lives}>{'❤️'.repeat(game.lives) || ' '}</Text>
           <Pressable
@@ -230,6 +234,19 @@ export default function CatchGameScreen() {
             <Text style={styles.lives}>{muted ? '🔇' : '🔊'}</Text>
           </Pressable>
         </View>
+      </View>
+      <View style={styles.progress} accessibilityLabel={`Phase ${game.phase + 1} of ${PHASES.length}`}>
+        {PHASES.map((p, i) => (
+          <View
+            key={p.name}
+            style={[
+              styles.step,
+              { backgroundColor: i <= game.phase ? (p.wire ?? sceneSky(i)) : '#8884' },
+              i === game.phase && styles.currentStep,
+              i === GLITCH_PHASE && styles.wireGap,
+            ]}
+          />
+        ))}
       </View>
       <View style={styles.status}>
         <ThemedText type="small">{game.streak >= 2 ? `🔥 ${game.streak} in a row` : ' '}</ThemedText>
@@ -250,6 +267,7 @@ export default function CatchGameScreen() {
         onMoveShouldSetResponder={() => status === 'playing' || status === 'countdown'}
         onResponderGrant={(e) => moveBasket(e.nativeEvent.locationX)}
         onResponderMove={(e) => moveBasket(e.nativeEvent.locationX)}>
+        <CatchScenery theme={game.phase % GLITCH_PHASE} wire={wire} />
         {wire &&
           Array.from({ length: GRID_LINES }, (_, i) => (
             <View key={`grid-${i}`} style={[styles.gridRow, { top: `${((i + 1) * 100) / (GRID_LINES + 1)}%`, backgroundColor: wire }]} />
@@ -414,6 +432,16 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.two,
   },
   lives: { fontSize: 18 },
+  progress: {
+    flexDirection: 'row',
+    gap: 3,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    alignItems: 'center',
+  },
+  step: { flex: 1, height: 6, borderRadius: 3 },
+  currentStep: { height: 10, borderRadius: 5, borderWidth: 1, borderColor: '#11181C' },
+  wireGap: { marginLeft: Spacing.two },
   area: {
     flex: 1,
     margin: Spacing.three,
