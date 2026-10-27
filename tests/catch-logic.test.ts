@@ -8,7 +8,10 @@ import {
   COMBO_STEP,
   comboBonus,
   createCatchState,
+  GLITCH_PHASE,
+  GLITCH_SECONDS,
   MAX_LIVES,
+  WIRE_GLYPHS,
   POWER_SECONDS,
   nextPhase,
   PHASES,
@@ -220,4 +223,44 @@ test('each phase has its own look and treats', () => {
   }
   const state = catchOne({ ...createCatchState(), recent: Array(PROMOTE_WINDOW - 1).fill(true) });
   assert.ok(state.events.some((e) => e.type === 'phase' && e.phase === 1));
+});
+
+test('8 colorful themes, then the same 8 in wireframe', () => {
+  assert.equal(PHASES.length, 16);
+  assert.deepEqual(
+    PHASES.slice(4, 8).map((p) => p.name),
+    ['Snow festival', 'Spring garden', 'Summer beach', 'Autumn harvest'],
+  );
+  for (let i = 0; i < GLITCH_PHASE; i++) {
+    assert.equal(PHASES[i].wire, undefined);
+    assert.equal(PHASES[GLITCH_PHASE + i].name, `WIRE // ${PHASES[i].name}`);
+    assert.ok(PHASES[GLITCH_PHASE + i].wire);
+  }
+});
+
+test('reaching wireframe glitches: the screen clears and drops pause', () => {
+  const before: CatchState = {
+    ...createCatchState(),
+    phase: GLITCH_PHASE - 1,
+    recent: Array(PROMOTE_WINDOW - 1).fill(true),
+  };
+  const after = catchOne({
+    ...before,
+    fallers: [],
+  });
+  assert.equal(after.phase, GLITCH_PHASE);
+  assert.ok(after.events.some((e) => e.type === 'glitch'));
+  assert.equal(after.fallers.length, 0);
+  assert.ok(after.untilSpawn > GLITCH_SECONDS - 0.1);
+});
+
+test('wireframe phases drop outline symbols instead of emoji', () => {
+  const outlines = new Set<string>([...PHASES.slice(GLITCH_PHASE).flatMap((p) => p.treats), ...Object.values(WIRE_GLYPHS)]);
+  let state: CatchState = { ...createCatchState(), phase: GLITCH_PHASE + 3 };
+  let rolls = 0;
+  for (let i = 0; i < 400; i++) {
+    state = stepCatch({ ...state, untilSpawn: 0 }, 0.001, 0.5, () => ((rolls = (rolls * 37 + 11) % 100) / 100));
+  }
+  assert.ok(state.fallers.length > 0);
+  for (const faller of state.fallers) assert.ok(outlines.has(faller.emoji), faller.emoji);
 });

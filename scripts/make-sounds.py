@@ -62,3 +62,15 @@ write("life", tone(500, 180, 320, 0.4, "square"))
 write("phase", tone(784, 784, 110, 0.35) + tone(988, 988, 110, 0.35) + tone(1319, 1319, 260, 0.4))
 write("beep", tone(660, 660, 110, 0.35))
 write("go", tone(990, 990, 240, 0.4))
+
+
+def crush(samples, step=6):
+    """Holds every few samples to make a crunchy, broken-electronics sound."""
+    return [samples[i - i % step] for i in range(len(samples))]
+
+
+glitch = []
+for i, freq in enumerate([220, 1760, 110, 3520, 440, 90, 2600, 180]):
+    glitch += crush(tone(freq, freq * (0.5 if i % 2 else 1.7), 70, 0.4, "square"), 4 + i % 5)
+    glitch += [0.0] * int(RATE * 0.012 * (i % 3))
+write("glitch", mix(glitch, noise(len(glitch) * 1000 // RATE, 0.3, 0.6)))

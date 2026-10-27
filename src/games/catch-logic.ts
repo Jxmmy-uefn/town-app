@@ -26,15 +26,77 @@ export type Phase = {
   speed: number;
   rockChance: number;
   starChance: number;
+  /** Wireframe phases draw everything as glowing outlines in this color. */
+  wire?: string;
 };
 
-export const PHASES: Phase[] = [
-  { name: 'Morning orchard', sky: '#CDEBFA', treats: ['🍎', '🍓', '🍐', '🍊', '🍌'], interval: 1.0, speed: 0.3, rockChance: 0.1, starChance: 0.05 },
-  { name: 'Bakery afternoon', sky: '#FBE7C6', treats: ['🍪', '🧁', '🍩', '🥐', '🥨'], interval: 0.85, speed: 0.38, rockChance: 0.15, starChance: 0.05 },
-  { name: 'Sunset sweets', sky: '#F9C6B4', treats: ['🍬', '🍭', '🍫', '🍡', '🍮'], interval: 0.7, speed: 0.46, rockChance: 0.2, starChance: 0.06 },
-  { name: 'Starry night', sky: '#3B4A7A', treats: ['🍰', '🎂', '🥧', '🍨', '🍦'], interval: 0.58, speed: 0.55, rockChance: 0.25, starChance: 0.07 },
-  { name: 'Snow festival', sky: '#E4EEF6', treats: ['🎁', '🍬', '🍪', '🥛', '🍫'], interval: 0.48, speed: 0.65, rockChance: 0.3, starChance: 0.08 },
+type Theme = {
+  name: string;
+  sky: string;
+  treats: string[];
+  /** Outline symbols that stand in for this theme's treats in wireframe mode. */
+  wireTreats: string[];
+  wire: string;
+};
+
+const THEMES: Theme[] = [
+  { name: 'Morning orchard', sky: '#CDEBFA', treats: ['🍎', '🍓', '🍐', '🍊', '🍌'], wireTreats: ['◯', '◒', '◇', '○'], wire: '#39FF14' },
+  { name: 'Bakery afternoon', sky: '#FBE7C6', treats: ['🍪', '🧁', '🍩', '🥐', '🥨'], wireTreats: ['◎', '○', '▭', '◯'], wire: '#FFB347' },
+  { name: 'Sunset sweets', sky: '#F9C6B4', treats: ['🍬', '🍭', '🍫', '🍡', '🍮'], wireTreats: ['◇', '◊', '○', '♢'], wire: '#FF6EC7' },
+  { name: 'Starry night', sky: '#3B4A7A', treats: ['🍰', '🎂', '🥧', '🍨', '🍦'], wireTreats: ['☾', '◯', '◌', '◇'], wire: '#7DF9FF' },
+  { name: 'Snow festival', sky: '#E4EEF6', treats: ['🎁', '🍬', '🍪', '🥛', '🍫'], wireTreats: ['✲', '◇', '▢', '○'], wire: '#E0FFFF' },
+  { name: 'Spring garden', sky: '#DFF5DC', treats: ['🍓', '🥕', '🍯', '🫐', '🥗'], wireTreats: ['✿', '○', '◇', '◑'], wire: '#ADFF2F' },
+  { name: 'Summer beach', sky: '#FFE9A8', treats: ['🍉', '🍦', '🍍', '🍑', '🧃'], wireTreats: ['☼', '◯', '△', '◇'], wire: '#FFFF66' },
+  { name: 'Autumn harvest', sky: '#F4C58E', treats: ['🎃', '🥧', '🍎', '🌰', '🍠'], wireTreats: ['❦', '◯', '△', '◇'], wire: '#FF8C00' },
 ];
+
+// Speed and drop rate keep climbing through all 16 phases; rocks level off.
+const DIFFICULTY: Pick<Phase, 'interval' | 'speed' | 'rockChance' | 'starChance'>[] = [
+  { interval: 1.0, speed: 0.3, rockChance: 0.1, starChance: 0.05 },
+  { interval: 0.85, speed: 0.38, rockChance: 0.15, starChance: 0.05 },
+  { interval: 0.7, speed: 0.46, rockChance: 0.2, starChance: 0.06 },
+  { interval: 0.58, speed: 0.55, rockChance: 0.25, starChance: 0.07 },
+  { interval: 0.48, speed: 0.65, rockChance: 0.3, starChance: 0.08 },
+  { interval: 0.45, speed: 0.69, rockChance: 0.3, starChance: 0.08 },
+  { interval: 0.42, speed: 0.73, rockChance: 0.31, starChance: 0.08 },
+  { interval: 0.4, speed: 0.77, rockChance: 0.32, starChance: 0.08 },
+  { interval: 0.39, speed: 0.8, rockChance: 0.32, starChance: 0.08 },
+  { interval: 0.375, speed: 0.83, rockChance: 0.33, starChance: 0.08 },
+  { interval: 0.36, speed: 0.86, rockChance: 0.33, starChance: 0.08 },
+  { interval: 0.345, speed: 0.89, rockChance: 0.34, starChance: 0.08 },
+  { interval: 0.33, speed: 0.92, rockChance: 0.34, starChance: 0.08 },
+  { interval: 0.32, speed: 0.95, rockChance: 0.35, starChance: 0.08 },
+  { interval: 0.31, speed: 0.98, rockChance: 0.35, starChance: 0.08 },
+  { interval: 0.3, speed: 1.0, rockChance: 0.36, starChance: 0.08 },
+];
+
+/** The 8 themes in color, then the same 8 again as wireframe after the glitch. */
+export const PHASES: Phase[] = [
+  ...THEMES.map((theme, i) => ({ name: theme.name, sky: theme.sky, treats: theme.treats, ...DIFFICULTY[i] })),
+  ...THEMES.map((theme, i) => ({
+    name: `WIRE // ${theme.name}`,
+    sky: '#04070A',
+    treats: theme.wireTreats,
+    wire: theme.wire,
+    ...DIFFICULTY[THEMES.length + i],
+  })),
+];
+
+/** The first wireframe phase, where the game glitches out. */
+export const GLITCH_PHASE = THEMES.length;
+/** Seconds of glitch before things start falling again. */
+export const GLITCH_SECONDS = 2;
+
+/** Outline stand-ins for special items in wireframe mode. */
+export const WIRE_GLYPHS = {
+  rock: '✕',
+  star: '☆',
+  golden: '✧',
+  magnet: '∪',
+  slow: '◴',
+  shield: '▽',
+  life: '♡',
+} as const;
 
 export const POWERS: Record<PowerKind, { emoji: string; label: string }> = {
   magnet: { emoji: '🧲', label: 'Magnet' },
@@ -83,7 +145,8 @@ export type CatchEvent =
   | { type: 'power'; x: number; power: PowerKind }
   | { type: 'rock'; blocked: boolean }
   | { type: 'drop' }
-  | { type: 'phase'; phase: number };
+  | { type: 'phase'; phase: number }
+  | { type: 'glitch' };
 
 export type CatchState = {
   fallers: Faller[];
@@ -150,8 +213,11 @@ function spawn(id: number, phase: Phase, rng: () => number): Faller {
   else if (roll < (threshold += POWER_CHANCE)) kind = 'power';
 
   const power = kind === 'power' ? pickPower(rng) : undefined;
-  const emoji =
-    kind === 'rock'
+  const emoji = phase.wire
+    ? kind === 'treat'
+      ? pick(phase.treats, rng)
+      : WIRE_GLYPHS[power ?? (kind as 'rock' | 'star' | 'golden')]
+    : kind === 'rock'
       ? '🪨'
       : kind === 'star'
         ? '⭐'
@@ -278,18 +344,27 @@ export function stepCatch(state: CatchState, dt: number, basketX: number, rng = 
   }
 
   const { phase, recent } = nextPhase(state.phase, [...state.recent, ...results]);
-  if (phase !== state.phase) events.push({ type: 'phase', phase });
+  let remaining = fallers;
+  if (phase !== state.phase) {
+    events.push({ type: 'phase', phase });
+    if (phase === GLITCH_PHASE) {
+      // Everything on screen glitches away, and there's a short pause before wireframe mode.
+      events.push({ type: 'glitch' });
+      remaining = [];
+      untilSpawn = GLITCH_SECONDS;
+    }
+  }
 
   untilSpawn -= dt;
   if (untilSpawn <= 0) {
-    fallers.push(spawn(nextId, PHASES[phase], rng));
+    remaining.push(spawn(nextId, PHASES[phase], rng));
     nextId += 1;
     untilSpawn = PHASES[phase].interval / (slow > 0 ? SLOW_FACTOR : 1);
   }
 
   lives = Math.max(0, lives);
   return {
-    fallers,
+    fallers: remaining,
     score,
     lives,
     elapsed,

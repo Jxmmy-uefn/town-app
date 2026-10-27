@@ -3,7 +3,17 @@ import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
 import { Platform } from 'react-native';
 
-export type SoundName = 'catch' | 'golden' | 'combo' | 'power' | 'rock' | 'life' | 'phase' | 'beep' | 'go';
+export type SoundName =
+  | 'catch'
+  | 'golden'
+  | 'combo'
+  | 'power'
+  | 'rock'
+  | 'life'
+  | 'phase'
+  | 'beep'
+  | 'go'
+  | 'glitch';
 export type BuzzKind = 'tap' | 'bump' | 'thud' | 'good' | 'bad';
 
 /** Placeholder sound effects from scripts/make-sounds.py, plus vibration. */
@@ -18,6 +28,7 @@ export function useGameFeedback(muted: boolean) {
     phase: useAudioPlayer(require('@/assets/sounds/phase.wav')),
     beep: useAudioPlayer(require('@/assets/sounds/beep.wav')),
     go: useAudioPlayer(require('@/assets/sounds/go.wav')),
+    glitch: useAudioPlayer(require('@/assets/sounds/glitch.wav')),
   };
 
   const play = useCallback(

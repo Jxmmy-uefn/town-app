@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { GameOver } from '@/components/game-over';
 import { ThemedText } from '@/components/themed-text';
@@ -9,11 +9,13 @@ import {
   BASKET_TOP,
   BASKET_WIDTH,
   createCatchState,
+  GLITCH_SECONDS,
   PHASES,
   POWERS,
   stepCatch,
   type CatchEvent,
   type CatchState,
+  type Faller,
 } from '@/games/catch-logic';
 import { useGameFeedback } from '@/lib/game-feedback';
 import { useFinishGame } from '@/lib/use-finish-game';
@@ -26,6 +28,23 @@ const BOUNCE_MS = 160;
 const SHAKE_MS = 300;
 const COUNTDOWN = ['3', '2', '1', 'Go!'];
 const COUNTDOWN_STEP_MS = 800;
+const GLITCH_MS = GLITCH_SECONDS * 1000;
+const GRID_LINES = 9;
+const WIRE_DANGER = '#FF3B3B';
+const WIRE_SPECIAL = '#FFFFFF';
+const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
+
+/** A repeatable pseudo-random number from 0 to 1, so glitch effects don't need state. */
+function noise(seed: number) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function wireColor(faller: Faller, line: string) {
+  if (faller.kind === 'rock') return WIRE_DANGER;
+  if (faller.kind === 'treat') return line;
+  return WIRE_SPECIAL;
+}
 
 type Status = 'ready' | 'countdown' | 'playing' | 'over';
 
@@ -41,6 +60,7 @@ export default function CatchGameScreen() {
   const [popups, setPopups] = useState<Popup[]>([]);
   const [bounceAt, setBounceAt] = useState(-Infinity);
   const [shakeAt, setShakeAt] = useState(-Infinity);
+  const [glitchAt, setGlitchAt] = useState(-Infinity);
   const [now, setNow] = useState(0);
   const [muted, setMuted] = useState(false);
   const basketX = useRef(0.5);
@@ -133,6 +153,12 @@ export default function CatchGameScreen() {
             sound('phase');
             vibrate('good');
             break;
+          case 'glitch':
+            setGlitchAt(at);
+            setPopups([]);
+            sound('glitch');
+            vibrate('bad');
+            break;
         }
       }
       setPopups((current) => [...current.filter((p) => at - p.born < POPUP_MS), ...added]);
@@ -164,16 +190,25 @@ export default function CatchGameScreen() {
     setBasketPos(0.5);
     setBanner(null);
     setPopups([]);
+    setGlitchAt(-Infinity);
     setGame(createCatchState());
     setCount(0);
     setStatus('countdown');
   }, [reset]);
 
   const theme = PHASES[game.phase];
+  const wire = theme.wire;
   const bounce = Math.max(0, 1 - (now - bounceAt) / BOUNCE_MS);
   const shakeLeft = Math.max(0, 1 - (now - shakeAt) / SHAKE_MS);
-  const shake = Math.sin((now - shakeAt) / 18) * 10 * shakeLeft;
-  const showBanner = banner && now - banner.born < BANNER_MS;
+  const glitching = now - glitchAt < GLITCH_MS;
+  // While glitching, the play area jumps around in sudden steps (about 20 per second).
+  const glitchTick = Math.floor(now / 50);
+  const shake =
+    Math.sin((now - shakeAt) / 18) * 10 * shakeLeft + (glitching ? (noise(glitchTick) - 0.5) * 30 : 0);
+  const glitchFlash = glitching && noise(glitchTick + 7) > 0.75;
+  // The phase banner waits until the glitch is over.
+  const showBanner =
+    banner && !glitching && now - banner.born < BANNER_MS + (banner.born === glitchAt ? GLITCH_MS : 0);
   const active = [
     game.magnet > 0 && `🧲 ${Math.ceil(game.magnet)}s`,
     game.slow > 0 && `🐢 ${Math.ceil(game.slow)}s`,
@@ -202,26 +237,47 @@ export default function CatchGameScreen() {
       </View>
 
       <View
-        style={[styles.area, { backgroundColor: theme.sky, transform: [{ translateX: shake }] }]}
+        style={[
+          styles.area,
+          {
+            backgroundColor: glitchFlash ? '#FFFFFF' : theme.sky,
+            transform: [{ translateX: shake }],
+          },
+          wire && { borderWidth: 1, borderColor: wire },
+        ]}
         onLayout={onLayout}
         onStartShouldSetResponder={() => status === 'playing' || status === 'countdown'}
         onMoveShouldSetResponder={() => status === 'playing' || status === 'countdown'}
         onResponderGrant={(e) => moveBasket(e.nativeEvent.locationX)}
         onResponderMove={(e) => moveBasket(e.nativeEvent.locationX)}>
-        {game.fallers.map((faller) => (
-          <Text
-            key={faller.id}
-            style={[
-              styles.faller,
-              {
-                left: faller.x * size.width - FALLER_SIZE / 2,
-                top: faller.y * size.height - FALLER_SIZE / 2,
-              },
-              faller.kind === 'golden' && styles.golden,
-            ]}>
-            {faller.emoji}
-          </Text>
-        ))}
+        {wire &&
+          Array.from({ length: GRID_LINES }, (_, i) => (
+            <View key={`grid-${i}`} style={[styles.gridRow, { top: `${((i + 1) * 100) / (GRID_LINES + 1)}%`, backgroundColor: wire }]} />
+          ))}
+        {wire &&
+          Array.from({ length: 5 }, (_, i) => (
+            <View key={`gridc-${i}`} style={[styles.gridCol, { left: `${((i + 1) * 100) / 6}%`, backgroundColor: wire }]} />
+          ))}
+
+        {game.fallers.map((faller) => {
+          const color = wire && wireColor(faller, wire);
+          return (
+            <Text
+              key={faller.id}
+              style={[
+                styles.faller,
+                {
+                  left: faller.x * size.width - FALLER_SIZE / 2,
+                  top: faller.y * size.height - FALLER_SIZE / 2,
+                },
+                faller.kind === 'golden' && !wire && styles.golden,
+                color && { color, fontFamily: MONO, textShadowColor: color, textShadowRadius: 8 },
+                wire && faller.kind === 'power' && [styles.wirePower, { borderColor: WIRE_SPECIAL }],
+              ]}>
+              {faller.emoji}
+            </Text>
+          );
+        })}
 
         <View
           style={[
@@ -233,8 +289,12 @@ export default function CatchGameScreen() {
               transform: [{ scaleX: 1 + bounce * 0.25 }, { scaleY: 1 - bounce * 0.15 }],
             },
           ]}>
-          {game.shield && <Text style={styles.shield}>🛡️</Text>}
-          <Text style={styles.basketEmoji}>🧺</Text>
+          {game.shield && <Text style={[styles.shield, wire && { color: WIRE_SPECIAL }]}>{wire ? '▽' : '🛡️'}</Text>}
+          {wire ? (
+            <View style={[styles.wireBasket, { borderColor: wire, shadowColor: wire }]} />
+          ) : (
+            <Text style={styles.basketEmoji}>🧺</Text>
+          )}
         </View>
 
         {popups.map((p) => {
@@ -262,9 +322,34 @@ export default function CatchGameScreen() {
             <Text style={styles.countdown}>{COUNTDOWN[count]}</Text>
           </View>
         )}
+        {glitching && (
+          <>
+            {[0, 1, 2].map((i) => (
+              <View
+                key={`slice-${i}`}
+                style={[
+                  styles.slice,
+                  {
+                    top: `${noise(glitchTick * 3 + i) * 90}%`,
+                    height: 6 + noise(glitchTick + i * 5) * 30,
+                    left: (noise(glitchTick + i * 11) - 0.5) * 60,
+                    backgroundColor: ['#FF00FF', '#00FFFF', '#39FF14'][i],
+                  },
+                ]}
+              />
+            ))}
+            <View style={styles.banner}>
+              <Text style={[styles.glitchText, { left: (noise(glitchTick + 3) - 0.5) * 16 }]}>
+                {noise(glitchTick + 1) > 0.5 ? 'SYSTEM GLITCH' : 'S̷Y̷S̷T̷E̷M̷ G̷L̷I̷T̷C̷H̷'}
+              </Text>
+            </View>
+          </>
+        )}
         {showBanner && (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>{banner.text}</Text>
+            <Text style={[styles.bannerText, wire && [styles.wireBanner, { color: wire, borderColor: wire }]]}>
+              {banner.text}
+            </Text>
           </View>
         )}
       </View>
@@ -287,7 +372,8 @@ export default function CatchGameScreen() {
               Power-ups: 🧲 pulls treats in · 🐢 slows things down · 🛡️ blocks a rock · ❤️ extra life
             </ThemedText>
             <ThemedText style={styles.center}>
-              Play well to move up through 5 phases: faster, but every catch is worth more.
+              Play well to move up through the phases: faster, but every catch is worth more. Make it
+              past autumn and… well, you’ll see.
             </ThemedText>
             <ThemedText type="smallBold" style={styles.center}>
               Tap anywhere to start
@@ -347,6 +433,38 @@ const styles = StyleSheet.create({
   golden: { fontSize: 34, textShadowColor: '#FFD54F', textShadowRadius: 12 },
   basket: { position: 'absolute', alignItems: 'center', pointerEvents: 'none' },
   basketEmoji: { fontSize: 44 },
+  wireBasket: {
+    width: 52,
+    height: 34,
+    marginTop: 8,
+    borderWidth: 2,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  wirePower: { borderWidth: 1.5, borderRadius: FALLER_SIZE / 2, overflow: 'hidden' },
+  gridRow: { position: 'absolute', left: 0, right: 0, height: 1, opacity: 0.25, pointerEvents: 'none' },
+  gridCol: { position: 'absolute', top: 0, bottom: 0, width: 1, opacity: 0.25, pointerEvents: 'none' },
+  slice: { position: 'absolute', width: '100%', opacity: 0.7, pointerEvents: 'none' },
+  glitchText: {
+    fontFamily: MONO,
+    fontSize: 30,
+    fontWeight: 900,
+    color: '#39FF14',
+    backgroundColor: '#000000CC',
+    paddingHorizontal: Spacing.three,
+    textShadowColor: '#FF00FF',
+    textShadowOffset: { width: 3, height: 0 },
+    textShadowRadius: 0,
+  },
+  wireBanner: {
+    fontFamily: MONO,
+    backgroundColor: '#000000DD',
+    borderWidth: 1,
+  },
   shield: { position: 'absolute', top: -22, fontSize: 20 },
   popup: {
     position: 'absolute',
