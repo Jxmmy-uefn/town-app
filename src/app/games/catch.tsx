@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
-import { Button } from '@/components/button';
 import { GameOver } from '@/components/game-over';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,11 +16,13 @@ import { useFinishGame } from '@/lib/use-finish-game';
 
 const FALLER_SIZE = 36;
 const MAX_STEP = 0.05;
+const BANNER_MS = 1500;
 
-type Phase = 'ready' | 'playing' | 'over';
+type Status = 'ready' | 'playing' | 'over';
 
 export default function CatchGameScreen() {
-  const [phase, setPhase] = useState<Phase>('ready');
+  const [status, setStatus] = useState<Status>('ready');
+  const [banner, setBanner] = useState<string | null>(null);
   const [game, setGame] = useState<CatchState>(createCatchState);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const basketX = useRef(0.5);
@@ -45,48 +46,62 @@ export default function CatchGameScreen() {
   };
 
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (status !== 'playing') return;
     let frame = 0;
+    let bannerTimer: ReturnType<typeof setTimeout> | undefined;
     let last = performance.now();
     let state = createCatchState();
 
     const tick = (now: number) => {
       const dt = Math.min(MAX_STEP, (now - last) / 1000);
       last = now;
+      const before = state.phase;
       state = stepCatch(state, dt, basketX.current);
+      if (state.phase !== before) {
+        setBanner(
+          state.phase > before ? `Phase ${state.phase + 1}! Faster, more points` : `Back to phase ${state.phase + 1}`,
+        );
+        clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(() => setBanner(null), BANNER_MS);
+      }
       setGame(state);
       setBasketPos(basketX.current);
       if (state.over) {
-        setPhase('over');
+        setStatus('over');
         finishRef.current(state.score);
         return;
       }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [phase]);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(bannerTimer);
+    };
+  }, [status]);
 
   const start = useCallback(() => {
     reset();
     basketX.current = 0.5;
     setBasketPos(0.5);
+    setBanner(null);
     setGame(createCatchState());
-    setPhase('playing');
+    setStatus('playing');
   }, [reset]);
 
   return (
     <ThemedView style={styles.fill}>
       <View style={styles.hud}>
         <ThemedText type="smallBold">Score {game.score}</ThemedText>
+        <ThemedText type="smallBold">Phase {game.phase + 1}</ThemedText>
         <Text style={styles.lives}>{'❤️'.repeat(game.lives) || ' '}</Text>
       </View>
 
       <View
         style={styles.area}
         onLayout={onLayout}
-        onStartShouldSetResponder={() => true}
-        onMoveShouldSetResponder={() => true}
+        onStartShouldSetResponder={() => status === 'playing'}
+        onMoveShouldSetResponder={() => status === 'playing'}
         onResponderGrant={(e) => moveBasket(e.nativeEvent.locationX)}
         onResponderMove={(e) => moveBasket(e.nativeEvent.locationX)}>
         {game.fallers.map((faller) => (
@@ -114,8 +129,17 @@ export default function CatchGameScreen() {
           <Text style={styles.basketEmoji}>🧺</Text>
         </View>
 
-        {phase === 'ready' && (
-          <View style={styles.overlay}>
+        {banner && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>{banner}</Text>
+          </View>
+        )}
+      </View>
+
+      {status === 'ready' && (
+        // Outside the play area so the basket's touch handling can't swallow the tap.
+        <Pressable accessibilityRole="button" accessibilityLabel="Start" onPress={start} style={styles.overlayFull}>
+          <View style={styles.intro}>
             <ThemedText type="subtitle" style={styles.center}>
               Catch!
             </ThemedText>
@@ -123,12 +147,17 @@ export default function CatchGameScreen() {
               Slide your finger to move the basket. Catch treats, skip the rocks, and don’t let
               treats hit the ground. Stars are worth 50.
             </ThemedText>
-            <Button label="Start" onPress={start} />
+            <ThemedText style={styles.center}>
+              Play well and you move up a phase: things fall faster, but every catch is worth more.
+            </ThemedText>
+            <ThemedText type="smallBold" style={styles.center}>
+              Tap anywhere to start
+            </ThemedText>
           </View>
-        )}
-      </View>
+        </Pressable>
+      )}
 
-      {phase === 'over' && (
+      {status === 'over' && (
         <View style={styles.overlayFull}>
           <GameOver
             score={game.score}
@@ -171,16 +200,30 @@ const styles = StyleSheet.create({
   },
   basket: { position: 'absolute', alignItems: 'center', pointerEvents: 'none' },
   basketEmoji: { fontSize: 44 },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
+  intro: {
+    margin: Spacing.four,
     padding: Spacing.four,
     gap: Spacing.three,
-    backgroundColor: '#FFFFFFCC',
+    borderRadius: Spacing.four,
+    backgroundColor: '#FFFFFF',
+  },
+  banner: {
+    position: 'absolute',
+    top: '35%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  bannerText: {
+    fontSize: 22,
+    fontWeight: 800,
+    color: '#ffffff',
+    backgroundColor: '#E8735ADD',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.four,
+    overflow: 'hidden',
   },
   overlayFull: {
     position: 'absolute',
