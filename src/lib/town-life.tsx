@@ -30,6 +30,7 @@ import {
   type TownEvent,
 } from '@/lib/daily-logic';
 import { useGame } from '@/lib/game-store';
+import { newBloop, playWith, type Bloop } from '@/lib/pet-logic';
 import { friendStickerId, HEARTS_FOR_STICKER } from '@/lib/resident-logic';
 
 // The Daily Loop's progress (Food bar, chores, today's gumball turn, stickers)
@@ -45,6 +46,7 @@ type LifeSave = {
   stickers: string[];
   /** Hearts with each town resident, and the last day you brought them a snack. */
   friends: Record<string, { hearts: number; lastGift: string | null }>;
+  bloop: Bloop | null;
 };
 
 function newSave(now: number): LifeSave {
@@ -57,6 +59,7 @@ function newSave(now: number): LifeSave {
     gumballDay: null,
     stickers: [],
     friends: {},
+    bloop: null,
   };
 }
 
@@ -78,6 +81,10 @@ type TownLife = {
   gumballReady: boolean;
   stickers: string[];
   friends: LifeSave['friends'];
+  bloop: Bloop | null;
+  adoptBloop(name: string, color: string): void;
+  /** Counts today's play time. */
+  playWithBloop(): void;
   record(event: TownEvent): void;
   /** Buys a resident today's snack. Returns an error message, or null when it worked. */
   giftResident(id: string, snackSlug: string): Promise<string | null>;
@@ -242,6 +249,16 @@ export function TownLifeProvider({ children }: { children: ReactNode }) {
     [buySnack, live.friends, update],
   );
 
+  const adoptBloop = useCallback(
+    (name: string, color: string) => update((s) => (s.bloop ? s : { ...s, bloop: newBloop(name, color) })),
+    [update],
+  );
+
+  const playWithBloop = useCallback(
+    () => update((s) => (s.bloop ? { ...s, bloop: playWith(s.bloop, dayKey()) } : s)),
+    [update],
+  );
+
   const food = currentFood(live.food, now);
   const chores: ChoreRow[] = live.chores.flatMap((c) => {
     const def = choreDef(c.id);
@@ -258,6 +275,9 @@ export function TownLifeProvider({ children }: { children: ReactNode }) {
     stickers: live.stickers,
     friends: live.friends,
     giftResident,
+    bloop: live.bloop,
+    adoptBloop,
+    playWithBloop,
     record,
     claimChore,
     claimAllChoresBonus,

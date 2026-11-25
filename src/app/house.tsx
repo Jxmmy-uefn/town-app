@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 
+import { BloopFigure } from '@/components/bloop-figure';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { catalogItem } from '@/constants/items';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { colorHex } from '@/lib/pet-logic';
 import { useTownLife } from '@/lib/town-life';
 import { ownedWithDetails, useGame, type Placement, type Rotation } from '@/lib/game-store';
 
@@ -69,7 +71,7 @@ export default function HouseScreen() {
   const roomSize = Math.min(width - Spacing.three * 2, 480);
   const game = useGame();
   const { owned, placements, unplace } = game;
-  const { record } = useTownLife();
+  const { record, bloop } = useTownLife();
   const place = (inventoryId: string) => {
     record('decorate');
     return game.place(inventoryId);
@@ -91,6 +93,11 @@ export default function HouseScreen() {
       <ScrollView contentContainerStyle={styles.content} scrollEnabled={false}>
         <View style={[styles.room, { width: roomSize, height: roomSize }]}>
           <View style={styles.wall} />
+          {bloop && (
+            <View style={styles.bloopSpot} pointerEvents="none">
+              <BloopFigure color={colorHex(bloop.color)} size={44} />
+            </View>
+          )}
           {placements.map((p) => (
             <PlacedItem
               key={p.inventoryId}
@@ -150,6 +157,7 @@ export default function HouseScreen() {
 }
 
 const styles = StyleSheet.create({
+  bloopSpot: { position: 'absolute', right: 12, bottom: 12 },
   fill: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three, alignItems: 'stretch' },
   room: {

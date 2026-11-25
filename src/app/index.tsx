@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvatarFigure } from '@/components/avatar-figure';
+import { BloopFigure } from '@/components/bloop-figure';
 import { FoodBar } from '@/components/food-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,6 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useGame } from '@/lib/game-store';
 import { currentParty, textOn } from '@/lib/party-logic';
+import { colorHex } from '@/lib/pet-logic';
 import { useTownLife } from '@/lib/town-life';
 
 const PLACE_SIZE = 0.37;
@@ -37,6 +39,18 @@ export default function TownMapScreen() {
                   {coins} coins
                 </ThemedText>
               </View>
+            </Pressable>
+          </Link>
+          <Link href="/bloop" asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={life.bloop ? `Play with ${life.bloop.name}` : 'Adopt a Bloop'}
+              style={styles.bloop}>
+              {life.bloop ? (
+                <BloopFigure color={colorHex(life.bloop.color)} size={34} />
+              ) : (
+                <ThemedText type="linkPrimary">Adopt a Bloop</ThemedText>
+              )}
             </Pressable>
           </Link>
           <View style={styles.headerLinks}>
@@ -130,6 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
+  bloop: { flex: 1, alignItems: 'flex-start', paddingLeft: Spacing.two },
   headerLinks: { flexDirection: 'row', gap: Spacing.three },
   me: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   today: {

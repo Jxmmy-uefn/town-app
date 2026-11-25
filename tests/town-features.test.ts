@@ -82,3 +82,15 @@ test('every resident has a home, a favorite snack and a friend sticker', async (
     assert.ok(MENU.includes(dailyRequest(r, '2026-11-25', MENU)));
   }
 });
+
+test('Bloops learn tricks by playing on different days', async () => {
+  const { newBloop, playWith, knownTricks, nextTrick } = await import('../src/lib/pet-logic.ts');
+  let b = newBloop('Pip', 'aqua');
+  assert.deepEqual(knownTricks(b).map((t) => t.id), ['hop']);
+  b = playWith(b, '2026-11-25');
+  b = playWith(b, '2026-11-25');
+  assert.equal(b.playDays, 1);
+  b = playWith(b, '2026-11-26');
+  assert.deepEqual(knownTricks(b).map((t) => t.id), ['hop', 'wiggle']);
+  assert.equal(nextTrick(b)?.id, 'spin');
+});
