@@ -2,6 +2,7 @@
 // It is put together from the party calendar, the hidden sticker and a few
 // rotating lists, so it stays fresh without anyone writing it by hand.
 
+import { COLLECTIONS, currentCollection, daysLeftInCollection } from '../constants/items.ts';
 import { currentParty, nextParty, partyDates } from './party-logic.ts';
 import { currentHiddenSpot } from './sticker-logic.ts';
 
@@ -66,6 +67,13 @@ export function issueFor(now: Date = new Date()): Issue {
     kicker: 'Sticker hunt',
     title: 'Clue of the fortnight',
     body: `${spot.hint} It moves to a new hiding spot in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}.`,
+  });
+
+  const left = daysLeftInCollection(now);
+  stories.push({
+    kicker: 'Shop news',
+    title: `The ${COLLECTIONS[currentCollection(now)]} collection is in`,
+    body: `New 2000s clothes and furniture at the Shop for ${left} more ${left === 1 ? 'day' : 'days'}. Next month brings the ${COLLECTIONS[(currentCollection(now) + 1) % COLLECTIONS.length]} collection.`,
   });
 
   const joke = JOKES[week % JOKES.length];

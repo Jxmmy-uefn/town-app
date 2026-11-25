@@ -53,3 +53,18 @@ test('the bulletin has a new issue every Monday', () => {
   assert.equal(issueFor(new Date(2026, 10, 30)).number, 3);
   assert.equal(issueFor(new Date(2026, 11, 1)).stories[0].kicker, 'Coming up');
 });
+
+test('the Shop collection changes each month and comes back around', async () => {
+  const { COLLECTIONS, currentCollection, daysLeftInCollection, isForSale, CATALOG: items } = await import(
+    '../src/constants/items.ts'
+  );
+  assert.equal(currentCollection(new Date(2026, 10, 25)), 0);
+  assert.equal(currentCollection(new Date(2026, 11, 1)), 1);
+  assert.equal(currentCollection(new Date(2027, 2, 1)), 0);
+  assert.equal(currentCollection(new Date(2026, 9, 1)), COLLECTIONS.length - 1);
+  assert.equal(daysLeftInCollection(new Date(2026, 10, 25)), 6);
+  const lamp = items.find((i) => i.slug === 'lava-lamp')!;
+  assert.equal(isForSale(lamp, new Date(2026, 10, 25)), true);
+  assert.equal(isForSale(lamp, new Date(2026, 11, 25)), false);
+  for (let c = 0; c < COLLECTIONS.length; c++) assert.ok(items.some((i) => i.collection === c));
+});

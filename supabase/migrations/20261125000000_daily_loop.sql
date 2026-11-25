@@ -188,7 +188,43 @@ from (values
 ) as g (slug, month, start_day, end_day)
 join public.items i on i.slug = g.slug;
 
--- Party gifts are free and never sold, so the shop must refuse them.
+-- Monthly Shop collections ----------------------------------------------------------------
+
+-- Each collection is sold for one month, then the next one takes over. With 4
+-- collections, November 2026 is collection 0 and each comes back every 4 months.
+-- Matches COLLECTIONS and currentCollection in src/constants/items.ts.
+alter table public.items add column collection integer check (collection between 0 and 3);
+
+insert into public.items (slug, name, category, price, collection) values
+  ('inflatable-chair', 'Inflatable Chair', 'furniture', 120, 0),
+  ('lava-lamp', 'Lava Lamp', 'furniture', 90, 0),
+  ('bubble-tv', 'Bubble TV', 'furniture', 200, 0),
+  ('frosted-tips', 'Frosted Tips', 'clothing', 80, 0),
+  ('puffer-vest', 'Puffer Vest', 'clothing', 90, 1),
+  ('chunky-sneakers', 'Chunky Sneakers', 'clothing', 100, 1),
+  ('butterfly-clips', 'Butterfly Clips', 'clothing', 40, 1),
+  ('bead-curtain', 'Bead Curtain', 'furniture', 110, 1),
+  ('trucker-hat', 'Trucker Hat', 'clothing', 50, 2),
+  ('graphic-tee', 'Graphic Tee', 'clothing', 60, 2),
+  ('skate-shoes', 'Skate Shoes', 'clothing', 90, 2),
+  ('halfpipe-poster', 'Halfpipe Poster', 'furniture', 70, 2),
+  ('vinyl-beanbag', 'Vinyl Beanbag', 'furniture', 100, 3),
+  ('fiber-optic-lamp', 'Fiber-Optic Lamp', 'furniture', 150, 3),
+  ('fuzzy-slippers', 'Fuzzy Slippers', 'clothing', 50, 3),
+  ('pajama-tee', 'Pajama Tee', 'clothing', 50, 3);
+
+create function public.current_collection()
+returns integer
+language sql
+stable
+set search_path = ''
+as $$
+  select ((((extract(year from now())::integer - 2026) * 12
+    + extract(month from now())::integer - 11) % 4) + 4) % 4;
+$$;
+
+-- Party gifts are free and never sold, and collection items sell only in their
+-- month, so the shop must refuse anything else.
 create or replace function public.buy_item(p_item_id integer)
 returns bigint
 language plpgsql
@@ -198,7 +234,9 @@ declare
   item_price integer;
   new_id bigint;
 begin
-  select price into item_price from public.items where id = p_item_id and active and not party;
+  select price into item_price from public.items
+  where id = p_item_id and active and not party
+    and (collection is null or collection = public.current_collection());
   if item_price is null then
     raise exception 'item not for sale';
   end if;

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { CATALOG, catalogItem, type ClothingSlot } from '@/constants/items';
+import { CATALOG, catalogItem, isForSale, type ClothingSlot } from '@/constants/items';
 import { useAuth } from '@/lib/auth';
 import {
   COINS_ALL_CHORES,
@@ -139,7 +139,8 @@ function createDemoBackend(): Backend {
     },
     async buy(slug) {
       const price = catalogPrices[slug];
-      if (price === undefined) throw new Error('That item is not for sale.');
+      const details = catalogItem(slug);
+      if (price === undefined || !details || !isForSale(details)) throw new Error('That item is not for sale.');
       if (save.coins < price) throw new Error('Not enough coins.');
       const item = { inventoryId: String(save.nextId++), slug };
       save.coins -= price;

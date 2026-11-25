@@ -4,7 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/button';
 import { PlaceScreen } from '@/components/place-screen';
 import { ThemedText } from '@/components/themed-text';
-import { CATALOG, type ItemCategory } from '@/constants/items';
+import {
+  CATALOG,
+  COLLECTIONS,
+  currentCollection,
+  daysLeftInCollection,
+  isForSale,
+  type ItemCategory,
+} from '@/constants/items';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGame } from '@/lib/game-store';
@@ -31,13 +38,27 @@ export default function ShopScreen() {
     setMessage(error ?? `You bought the ${name}!`);
   }
 
+  // This month's collection first, then the everyday items.
   const items = CATALOG.filter(
-    (item) => item.category === tab && !item.party && prices[item.slug] !== undefined,
-  );
+    (item) => item.category === tab && isForSale(item) && prices[item.slug] !== undefined,
+  ).sort((a, b) => Number(b.collection !== undefined) - Number(a.collection !== undefined));
+  const collection = COLLECTIONS[currentCollection()];
+  const daysLeft = daysLeftInCollection();
 
   return (
     <PlaceScreen title="Shop" color="#F2B84B" visit="visit:shop">
       <ThemedText type="smallBold">You have {coins} coins</ThemedText>
+
+      <View style={styles.collection}>
+        <View style={styles.collectionShine} />
+        <ThemedText type="smallBold" style={styles.collectionText}>
+          New this month: the {collection} collection
+        </ThemedText>
+        <ThemedText type="small" style={styles.collectionText}>
+          On sale for {daysLeft} more {daysLeft === 1 ? 'day' : 'days'}. Missed it? Every collection comes back in{' '}
+          {COLLECTIONS.length} months.
+        </ThemedText>
+      </View>
 
       <View style={[styles.tabs, { backgroundColor: theme.backgroundElement }]}>
         {TABS.map((t) => (
@@ -65,6 +86,7 @@ export default function ShopScreen() {
             <View style={styles.cardText}>
               <ThemedText type="smallBold">{item.name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
+                {item.collection !== undefined ? `${COLLECTIONS[item.collection]} · ` : ''}
                 {price} coins{count > 0 ? ` · you own ${count}` : ''}
               </ThemedText>
             </View>
@@ -81,6 +103,15 @@ export default function ShopScreen() {
 }
 
 const styles = StyleSheet.create({
+  collection: {
+    backgroundColor: '#2D9CDB',
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.half,
+    overflow: 'hidden',
+  },
+  collectionShine: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: '#FFFFFF2E' },
+  collectionText: { color: '#ffffff' },
   tabs: { flexDirection: 'row', borderRadius: Spacing.three, padding: Spacing.one },
   tab: { flex: 1, alignItems: 'center', paddingVertical: Spacing.two, borderRadius: Spacing.two },
   card: {
