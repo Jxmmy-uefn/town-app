@@ -39,6 +39,7 @@ function RootStack() {
         <Stack.Screen name="stickers" options={{ title: 'Sticker Book' }} />
         <Stack.Screen name="party" options={{ title: 'Party' }} />
         <Stack.Screen name="bloop" options={{ title: 'Your Bloop' }} />
+        <Stack.Screen name="mystery" options={{ title: 'Town Mystery' }} />
         <Stack.Screen name="games/snack-job" options={{ title: 'Snack Shack Job' }} />
       </Stack.Protected>
     </Stack>

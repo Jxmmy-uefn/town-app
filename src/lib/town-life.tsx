@@ -30,6 +30,7 @@ import {
   type TownEvent,
 } from '@/lib/daily-logic';
 import { useGame } from '@/lib/game-store';
+import { NEW_CASE, type CaseProgress } from '@/lib/mystery-logic';
 import { newBloop, playWith, type Bloop } from '@/lib/pet-logic';
 import { friendStickerId, HEARTS_FOR_STICKER } from '@/lib/resident-logic';
 
@@ -47,6 +48,8 @@ type LifeSave = {
   /** Hearts with each town resident, and the last day you brought them a snack. */
   friends: Record<string, { hearts: number; lastGift: string | null }>;
   bloop: Bloop | null;
+  /** Town Mystery progress, by mystery id. */
+  cases: Record<string, CaseProgress>;
 };
 
 function newSave(now: number): LifeSave {
@@ -60,6 +63,7 @@ function newSave(now: number): LifeSave {
     stickers: [],
     friends: {},
     bloop: null,
+    cases: {},
   };
 }
 
@@ -85,6 +89,11 @@ type TownLife = {
   adoptBloop(name: string, color: string): void;
   /** Counts today's play time. */
   playWithBloop(): void;
+  cases: LifeSave['cases'];
+  /** Collects the next clue in a mystery. */
+  findClue(mysteryId: string): void;
+  /** Marks a mystery solved and gives its sticker. */
+  solveCase(mysteryId: string, stickerId: string): void;
   record(event: TownEvent): void;
   /** Buys a resident today's snack. Returns an error message, or null when it worked. */
   giftResident(id: string, snackSlug: string): Promise<string | null>;
@@ -259,6 +268,25 @@ export function TownLifeProvider({ children }: { children: ReactNode }) {
     [update],
   );
 
+  const findClue = useCallback(
+    (id: string) =>
+      update((s) => {
+        const c = s.cases[id] ?? NEW_CASE;
+        return { ...s, cases: { ...s.cases, [id]: { ...c, found: c.found + 1 } } };
+      }),
+    [update],
+  );
+
+  const solveCase = useCallback(
+    (id: string, stickerId: string) =>
+      update((s) => ({
+        ...s,
+        cases: { ...s.cases, [id]: { ...(s.cases[id] ?? NEW_CASE), solved: true } },
+        stickers: s.stickers.includes(stickerId) ? s.stickers : [...s.stickers, stickerId],
+      })),
+    [update],
+  );
+
   const food = currentFood(live.food, now);
   const chores: ChoreRow[] = live.chores.flatMap((c) => {
     const def = choreDef(c.id);
@@ -278,6 +306,9 @@ export function TownLifeProvider({ children }: { children: ReactNode }) {
     bloop: live.bloop,
     adoptBloop,
     playWithBloop,
+    cases: live.cases,
+    findClue,
+    solveCase,
     record,
     claimChore,
     claimAllChoresBonus,

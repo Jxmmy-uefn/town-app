@@ -1,4 +1,7 @@
+import { Link } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+
+import { Button } from '@/components/button';
 
 import { PlaceScreen } from '@/components/place-screen';
 import { ThemedText } from '@/components/themed-text';
@@ -51,6 +54,9 @@ export default function TownHallScreen() {
   return (
     <PlaceScreen title="Town Hall" color="#7A8CE0" visit="visit:town-hall">
       <Bulletin />
+      <Link href="/mystery" asChild>
+        <Button label="Open this month's mystery case file" variant="secondary" />
+      </Link>
       <ThemedText type="smallBold">Town rules</ThemedText>
       {RULES.map((rule, i) => (
         <ThemedText key={rule}>

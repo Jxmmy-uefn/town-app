@@ -3,6 +3,7 @@
 // rotating lists, so it stays fresh without anyone writing it by hand.
 
 import { COLLECTIONS, currentCollection, daysLeftInCollection } from '../constants/items.ts';
+import { currentMystery } from './mystery-logic.ts';
 import { currentParty, nextParty, partyDates } from './party-logic.ts';
 import { currentHiddenSpot } from './sticker-logic.ts';
 
@@ -67,6 +68,13 @@ export function issueFor(now: Date = new Date()): Issue {
     kicker: 'Sticker hunt',
     title: 'Clue of the fortnight',
     body: `${spot.hint} It moves to a new hiding spot in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}.`,
+  });
+
+  const mystery = currentMystery(now);
+  stories.push({
+    kicker: 'Town mystery',
+    title: mystery.title,
+    body: `${mystery.intro} The case file is here at Town Hall.`,
   });
 
   const left = daysLeftInCollection(now);

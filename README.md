@@ -55,6 +55,7 @@ These were picked from a look at what kept players coming back to classic social
 - **Monthly Parties**: once a month the map dresses up and everyone can pick up a free gift.
 - **Town residents**: Blip, Gloria Glitter, Mayor Marbles, Skye and Chef Tater each hang out in one place, say something new every day, and ask for a snack. Bring it five times and they give you their own sticker.
 - **Bloops**: adopt a free little jelly pet (preset names only). Playing with it on different days teaches it tricks, and it never gets sad when you're away.
+- **Town Mysteries**: a light story case each month. Ask residents for clues around town, then make your guess at Town Hall. Wrong guesses cost nothing, and solving it earns a sticker.
 - **Monthly Shop collections**: a themed set of 2000s clothes and furniture each month. Collections take turns, so each one comes back every few months.
 - **The Bubble Bulletin**: a weekly newspaper at Town Hall with party news, shop news, a sticker clue, a joke and a tip.
 

@@ -61,6 +61,12 @@ export default function StickerBookScreen() {
           owned={stickers}
         />
         <Page
+          title="Solved mysteries"
+          blurb="Solve the Town Mystery each month to earn its sticker. Every case comes back around, so you can catch up."
+          list={STICKERS.filter((s) => s.source === 'mystery')}
+          owned={stickers}
+        />
+        <Page
           title="From friends"
           blurb="Bring a town resident the snack they ask for each day. After five visits you're best friends, and they give you their own sticker."
           list={STICKERS.filter((s) => s.source === 'friend')}

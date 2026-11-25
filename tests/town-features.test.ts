@@ -94,3 +94,19 @@ test('Bloops learn tricks by playing on different days', async () => {
   assert.deepEqual(knownTricks(b).map((t) => t.id), ['hop', 'wiggle']);
   assert.equal(nextTrick(b)?.id, 'spin');
 });
+
+test('each Town Mystery is solvable with real residents and stickers', async () => {
+  const { MYSTERIES, currentMystery, clueAt, readyToSolve, NEW_CASE } = await import('../src/lib/mystery-logic.ts');
+  const { resident } = await import('../src/lib/resident-logic.ts');
+  for (const m of MYSTERIES) {
+    assert.equal(sticker(m.stickerId)?.source, 'mystery');
+    assert.ok(m.answer >= 0 && m.answer < m.options.length);
+    for (const step of m.steps) assert.equal(resident(step.residentId)?.place, step.place);
+  }
+  const m = currentMystery(new Date(2026, 10, 25));
+  assert.equal(m.id, 'lava-lamps');
+  assert.equal(currentMystery(new Date(2027, 2, 1)).id, 'lava-lamps');
+  assert.equal(clueAt(m, NEW_CASE, 'shop'), m.steps[0]);
+  assert.equal(clueAt(m, NEW_CASE, 'park'), null);
+  assert.equal(readyToSolve(m, { found: 3, solved: false }), true);
+});

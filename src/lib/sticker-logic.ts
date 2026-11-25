@@ -9,7 +9,7 @@ export type Sticker = {
   name: string;
   /** Emoji stand-in until the art exists. */
   emoji: string;
-  source: 'gumball' | 'hidden' | 'friend';
+  source: 'gumball' | 'hidden' | 'friend' | 'mystery';
 };
 
 export type HiddenSpot = {
@@ -45,6 +45,11 @@ export const STICKERS: Sticker[] = [
   { id: 'friend-mayor', name: 'Mayor’s Medal', emoji: '🏅', source: 'friend' },
   { id: 'friend-skye', name: 'Skye’s Sketch', emoji: '🎨', source: 'friend' },
   { id: 'friend-tater', name: 'Chef’s Kiss', emoji: '👨‍🍳', source: 'friend' },
+  // Given for solving each Town Mystery (see mystery-logic.ts).
+  { id: 'case-lava-lamps', name: 'Lava Lamp Detective', emoji: '🔎', source: 'mystery' },
+  { id: 'case-phantom-score', name: 'Score Sleuth', emoji: '🕵️', source: 'mystery' },
+  { id: 'case-jokes-page', name: 'Headline Hunter', emoji: '📰', source: 'mystery' },
+  { id: 'case-star-cards', name: 'Star Seeker', emoji: '🌟', source: 'mystery' },
 ];
 
 // One spot per two-week stretch, in this order. After the last one it starts
