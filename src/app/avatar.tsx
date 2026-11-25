@@ -6,6 +6,7 @@ import { ThemedView } from '@/components/themed-view';
 import type { ClothingSlot } from '@/constants/items';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTownLife } from '@/lib/town-life';
 import { ownedWithDetails, useGame } from '@/lib/game-store';
 
 const SKINS = ['#FBE3CC', '#F1C27D', '#E0AC69', '#C68642', '#8D5524', '#5C3A1E'];
@@ -35,7 +36,12 @@ function Swatches({ colors, value, onPick, label }: { colors: string[]; value: s
 
 export default function AvatarScreen() {
   const theme = useTheme();
-  const { avatar, owned, saveAvatar } = useGame();
+  const { avatar, owned, saveAvatar: save } = useGame();
+  const { record } = useTownLife();
+  const saveAvatar = (next: typeof avatar) => {
+    record('outfit');
+    return save(next);
+  };
   const clothes = ownedWithDetails(owned).filter((item) => item.category === 'clothing');
 
   return (
