@@ -13,9 +13,19 @@ type GameOverProps = {
   payout: number | null;
   error?: string | null;
   onPlayAgain: () => void;
+  playAgainLabel?: string;
+  backLabel?: string;
 };
 
-export function GameOver({ score, best, payout, error, onPlayAgain }: GameOverProps) {
+export function GameOver({
+  score,
+  best,
+  payout,
+  error,
+  onPlayAgain,
+  playAgainLabel = 'Play again',
+  backLabel = 'Back to the arcade',
+}: GameOverProps) {
   const theme = useTheme();
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
@@ -34,8 +44,8 @@ export function GameOver({ score, best, payout, error, onPlayAgain }: GameOverPr
           {"You've hit today's 500 coin limit. Come back tomorrow for more."}
         </ThemedText>
       )}
-      <Button label="Play again" onPress={onPlayAgain} />
-      <Button label="Back to the arcade" variant="secondary" onPress={() => router.back()} />
+      <Button label={playAgainLabel} onPress={onPlayAgain} />
+      <Button label={backLabel} variant="secondary" onPress={() => router.back()} />
     </View>
   );
 }

@@ -8,6 +8,7 @@ import { CATALOG, type ItemCategory } from '@/constants/items';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGame } from '@/lib/game-store';
+import { useTownLife } from '@/lib/town-life';
 
 const TABS: { id: ItemCategory; label: string }[] = [
   { id: 'clothing', label: 'Clothes' },
@@ -17,6 +18,7 @@ const TABS: { id: ItemCategory; label: string }[] = [
 export default function ShopScreen() {
   const theme = useTheme();
   const { coins, owned, prices, buy } = useGame();
+  const { record } = useTownLife();
   const [tab, setTab] = useState<ItemCategory>('clothing');
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -25,13 +27,16 @@ export default function ShopScreen() {
     setBusy(slug);
     const error = await buy(slug);
     setBusy(null);
+    if (!error) record('buy');
     setMessage(error ?? `You bought the ${name}!`);
   }
 
-  const items = CATALOG.filter((item) => item.category === tab && prices[item.slug] !== undefined);
+  const items = CATALOG.filter(
+    (item) => item.category === tab && !item.party && prices[item.slug] !== undefined,
+  );
 
   return (
-    <PlaceScreen title="Shop" color="#F2B84B">
+    <PlaceScreen title="Shop" color="#F2B84B" visit="visit:shop">
       <ThemedText type="smallBold">You have {coins} coins</ThemedText>
 
       <View style={[styles.tabs, { backgroundColor: theme.backgroundElement }]}>

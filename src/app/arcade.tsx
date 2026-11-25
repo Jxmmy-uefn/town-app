@@ -28,7 +28,7 @@ export default function ArcadeScreen() {
   }, [leaderboard]);
 
   return (
-    <PlaceScreen title="Arcade" color="#E8735A">
+    <PlaceScreen title="Arcade" color="#E8735A" visit="visit:arcade">
       <ThemedText themeColor="textSecondary">
         Every 10 points earns a coin, up to {MAX_COINS_PER_GAME} a game and {MAX_COINS_PER_DAY} a day.
       </ThemedText>

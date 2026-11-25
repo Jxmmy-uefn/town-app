@@ -11,10 +11,21 @@ import {
 
 import { CATALOG, catalogItem, type ClothingSlot } from '@/constants/items';
 import { useAuth } from '@/lib/auth';
+import {
+  COINS_ALL_CHORES,
+  COINS_PER_CHORE,
+  rollGumball,
+  snack,
+  type GumballPrize,
+} from '@/lib/daily-logic';
+import { currentParty } from '@/lib/party-logic';
 import { payoutFor } from '@/lib/rewards';
 import { supabase } from '@/lib/supabase';
 
-export type GameId = 'catch' | 'match3';
+export type GameId = 'catch' | 'match3' | 'snack-job';
+
+/** Coin bonuses from the Daily Loop. The server checks how often each can be claimed. */
+export type BonusKind = 'chore' | 'chores-bonus';
 export type Rotation = 0 | 90 | 180 | 270;
 
 export type Avatar = {
@@ -54,6 +65,14 @@ type Backend = {
   unplace(inventoryId: string): Promise<void>;
   saveAvatar(avatar: Avatar): Promise<void>;
   leaderboard(game: GameId): Promise<LeaderboardRow[]>;
+  /** Pays a Daily Loop bonus and returns the coins paid. */
+  claimBonus(kind: BonusKind): Promise<number>;
+  /** Today's free gumball turn. */
+  spinGumball(canWinSticker: boolean): Promise<GumballPrize>;
+  /** Spends coins on a snack and returns its price. */
+  buySnack(slug: string): Promise<number>;
+  /** Picks up the free gift from the party that is on right now. */
+  claimPartyGift(slug: string): Promise<OwnedItem>;
 };
 
 export const DEFAULT_AVATAR: Avatar = { skin: '#E0AC69', shirtColor: '#208AEF' };
@@ -148,6 +167,34 @@ function createDemoBackend(): Backend {
     },
     async leaderboard() {
       return [];
+    },
+    async claimBonus(kind) {
+      const amount = kind === 'chore' ? COINS_PER_CHORE : COINS_ALL_CHORES;
+      save.coins += amount;
+      await persist();
+      return amount;
+    },
+    async spinGumball(canWinSticker) {
+      const prize = rollGumball(Math.random(), canWinSticker);
+      save.coins += prize.coins;
+      await persist();
+      return prize;
+    },
+    async buySnack(slug) {
+      const item = snack(slug);
+      if (!item) throw new Error('That snack is not on the menu.');
+      if (save.coins < item.price) throw new Error('Not enough coins.');
+      save.coins -= item.price;
+      await persist();
+      return item.price;
+    },
+    async claimPartyGift(slug) {
+      if (currentParty()?.gift !== slug) throw new Error('That party is over.');
+      if (save.owned.some((o) => o.slug === slug)) throw new Error('You already picked up this gift.');
+      const item = { inventoryId: String(save.nextId++), slug };
+      save.owned = [...save.owned, item];
+      await persist();
+      return item;
     },
   };
 }
@@ -252,6 +299,19 @@ function createSupabaseBackend(userId: string): Backend {
       );
       return (rows ?? []).map((row) => ({ username: row.username, bestScore: row.best_score }));
     },
+    async claimBonus(kind) {
+      return check(await db.rpc('claim_daily_bonus', { p_kind: kind })) as number;
+    },
+    async spinGumball(canWinSticker) {
+      return check(await db.rpc('spin_gumball', { p_can_win_sticker: canWinSticker })) as GumballPrize;
+    },
+    async buySnack(slug) {
+      return check(await db.rpc('buy_snack', { p_slug: slug })) as number;
+    },
+    async claimPartyGift(slug) {
+      const id = check(await db.rpc('claim_party_gift', { p_item_id: itemIds.get(slug) }));
+      return { inventoryId: String(id), slug };
+    },
   };
 }
 
@@ -267,6 +327,11 @@ type GameState = GameData & {
   unplace(inventoryId: string): Promise<void>;
   saveAvatar(avatar: Avatar): Promise<void>;
   leaderboard(game: GameId): Promise<LeaderboardRow[]>;
+  claimBonus(kind: BonusKind): Promise<number>;
+  spinGumball(canWinSticker: boolean): Promise<GumballPrize>;
+  buySnack(slug: string): Promise<number>;
+  /** Returns an error message, or null when the gift was picked up. */
+  claimPartyGift(slug: string): Promise<string | null>;
 };
 
 const GameContext = createContext<GameState | null>(null);
@@ -366,6 +431,46 @@ export function GameProvider({ children }: { children: ReactNode }) {
     [backend],
   );
 
+  const claimBonus = useCallback(
+    async (kind: BonusKind) => {
+      const paid = await backend.claimBonus(kind);
+      setData((d) => ({ ...d, coins: d.coins + paid }));
+      return paid;
+    },
+    [backend],
+  );
+
+  const spinGumball = useCallback(
+    async (canWinSticker: boolean) => {
+      const prize = await backend.spinGumball(canWinSticker);
+      setData((d) => ({ ...d, coins: d.coins + prize.coins }));
+      return prize;
+    },
+    [backend],
+  );
+
+  const buySnack = useCallback(
+    async (slug: string) => {
+      const price = await backend.buySnack(slug);
+      setData((d) => ({ ...d, coins: d.coins - price }));
+      return price;
+    },
+    [backend],
+  );
+
+  const claimPartyGift = useCallback(
+    async (slug: string) => {
+      try {
+        const item = await backend.claimPartyGift(slug);
+        setData((d) => ({ ...d, owned: [...d.owned, item] }));
+        return null;
+      } catch (error) {
+        return error instanceof Error ? error.message : 'Something went wrong.';
+      }
+    },
+    [backend],
+  );
+
   const value: GameState = {
     ...data,
     loading,
@@ -376,6 +481,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     unplace,
     saveAvatar,
     leaderboard: backend.leaderboard,
+    claimBonus,
+    spinGumball,
+    buySnack,
+    claimPartyGift,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

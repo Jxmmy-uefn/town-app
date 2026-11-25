@@ -34,11 +34,28 @@ With no server set up, the app opens in **demo mode**. Everything works, and you
 | `src/constants/places.ts` | The places on the town map and where they sit. |
 | `src/games/` | Rules for the minigames, kept separate from the screens so they can be tested. |
 | `src/constants/items.ts` | Shop items and their placeholder emoji art. |
+| `src/lib/daily-logic.ts` | Rules for the Daily Loop: Gumball Machine prizes and odds, daily chores, the Food bar and Snack Shack menu. |
+| `src/lib/sticker-logic.ts` | Sticker Book stickers and where the hidden sticker is each fortnight. |
+| `src/lib/party-logic.ts` | The Monthly Party calendar and each party's free gift. |
+| `src/lib/bulletin-logic.ts` | The Bubble Bulletin, the weekly newspaper at Town Hall. |
+| `src/lib/town-life.tsx` | Daily Loop progress (Food bar, chores, today's gumball turn, stickers), saved on the phone. |
 | `src/lib/game-store.tsx` | Coins, items, your room and your avatar, saved on the phone in demo mode or in Supabase. |
 | `src/lib/` (other files) | Sign-in, the Supabase client, the age check and coin payouts. |
 | `tests/` | Tests for the game rules. Run them with `npm test`. |
 | `supabase/migrations/` | Database tables and the rules for who can read and change what. |
 | `supabase/seed.sql` | Starter shop items and chat phrases. |
+
+## Coming back every day
+
+These were picked from a look at what kept players coming back to classic social games, with fair-play rules for a 13+ audience: nothing is lost when you skip a day, prizes and odds are shown openly, and nothing random is ever sold.
+
+- **Today in Town** (the strip on the map): one free Gumball Machine turn a day, three small chores that pay 10 coins each plus a 20 coin bonus for all three, and your buddy's Food bar.
+- **Snack Shack**: buy 2000s snacks to fill the Food bar, or work a 45-second shift in the *Order Up!* job for coins.
+- **Sticker Book**: gumball stickers, plus one sticker hidden somewhere in town that moves every two weeks. Old spots come back around.
+- **Monthly Parties**: once a month the map dresses up and everyone can pick up a free gift.
+- **The Bubble Bulletin**: a weekly newspaper at Town Hall with party news, a sticker clue, a joke and a tip.
+
+If you set up Supabase before this was added, also run `supabase/migrations/20261125000000_daily_loop.sql` in the SQL Editor.
 
 ## Safety rules built into the database
 

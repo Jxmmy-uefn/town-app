@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { catalogItem } from '@/constants/items';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTownLife } from '@/lib/town-life';
 import { ownedWithDetails, useGame, type Placement, type Rotation } from '@/lib/game-store';
 
 const ITEM_SIZE = 64;
@@ -66,7 +67,17 @@ export default function HouseScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const roomSize = Math.min(width - Spacing.three * 2, 480);
-  const { owned, placements, place, move, unplace } = useGame();
+  const game = useGame();
+  const { owned, placements, unplace } = game;
+  const { record } = useTownLife();
+  const place = (inventoryId: string) => {
+    record('decorate');
+    return game.place(inventoryId);
+  };
+  const move = (placement: Placement) => {
+    record('decorate');
+    return game.move(placement);
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const placedIds = new Set(placements.map((p) => p.inventoryId));

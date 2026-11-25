@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { GameProvider } from '@/lib/game-store';
+import { TownLifeProvider } from '@/lib/town-life';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,6 +34,11 @@ function RootStack() {
         <Stack.Screen name="avatar" options={{ title: 'Your Look' }} />
         <Stack.Screen name="games/catch" options={{ title: 'Catch!' }} />
         <Stack.Screen name="games/match3" options={{ title: 'Fruit Match' }} />
+        <Stack.Screen name="daily" options={{ title: 'Today in Town' }} />
+        <Stack.Screen name="snack-shack" options={{ title: 'Snack Shack' }} />
+        <Stack.Screen name="stickers" options={{ title: 'Sticker Book' }} />
+        <Stack.Screen name="party" options={{ title: 'Party' }} />
+        <Stack.Screen name="games/snack-job" options={{ title: 'Snack Shack Job' }} />
       </Stack.Protected>
     </Stack>
   );
@@ -44,7 +50,9 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <GameProvider>
-          <RootStack />
+          <TownLifeProvider>
+            <RootStack />
+          </TownLifeProvider>
         </GameProvider>
       </AuthProvider>
     </ThemeProvider>
