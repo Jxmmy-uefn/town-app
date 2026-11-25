@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { ResidentCard } from '@/components/resident-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -60,6 +61,7 @@ export function PlaceScreen({ title, color, visit, children }: PlaceScreenProps)
           {place && <HiddenSticker place={place} />}
         </ThemedView>
         {children}
+        {place && <ResidentCard place={place} />}
       </ScrollView>
     </ThemedView>
   );

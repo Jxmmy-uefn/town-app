@@ -68,3 +68,17 @@ test('the Shop collection changes each month and comes back around', async () =>
   assert.equal(isForSale(lamp, new Date(2026, 11, 25)), false);
   for (let c = 0; c < COLLECTIONS.length; c++) assert.ok(items.some((i) => i.collection === c));
 });
+
+test('every resident has a home, a favorite snack and a friend sticker', async () => {
+  const { RESIDENTS, dailyLine, dailyRequest, friendStickerId } = await import('../src/lib/resident-logic.ts');
+  const { MENU } = await import('../src/games/snack-job-logic.ts');
+  const places = new Set<string>();
+  for (const r of RESIDENTS) {
+    assert.ok(!places.has(r.place), `${r.place} has two residents`);
+    places.add(r.place);
+    assert.ok(MENU.includes(r.favorite));
+    assert.equal(sticker(friendStickerId(r.id))?.source, 'friend');
+    assert.equal(dailyLine(r, '2026-11-25'), dailyLine(r, '2026-11-25'));
+    assert.ok(MENU.includes(dailyRequest(r, '2026-11-25', MENU)));
+  }
+});

@@ -9,7 +9,7 @@ export type Sticker = {
   name: string;
   /** Emoji stand-in until the art exists. */
   emoji: string;
-  source: 'gumball' | 'hidden';
+  source: 'gumball' | 'hidden' | 'friend';
 };
 
 export type HiddenSpot = {
@@ -39,6 +39,12 @@ export const STICKERS: Sticker[] = [
   { id: 'glow-stick', name: 'Glow Stick', emoji: '🪄', source: 'hidden' },
   { id: 'aqua-drop', name: 'Aqua Drop', emoji: '💧', source: 'hidden' },
   { id: 'golden-ticket', name: 'Golden Arcade Ticket', emoji: '🎟️', source: 'hidden' },
+  // Given by town residents at full friendship (see resident-logic.ts).
+  { id: 'friend-blip', name: 'Blip’s High Score', emoji: '🏆', source: 'friend' },
+  { id: 'friend-gloria', name: 'Gloria’s Glitter', emoji: '💅', source: 'friend' },
+  { id: 'friend-mayor', name: 'Mayor’s Medal', emoji: '🏅', source: 'friend' },
+  { id: 'friend-skye', name: 'Skye’s Sketch', emoji: '🎨', source: 'friend' },
+  { id: 'friend-tater', name: 'Chef’s Kiss', emoji: '👨‍🍳', source: 'friend' },
 ];
 
 // One spot per two-week stretch, in this order. After the last one it starts

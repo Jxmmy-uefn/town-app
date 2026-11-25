@@ -30,6 +30,7 @@ import {
   type TownEvent,
 } from '@/lib/daily-logic';
 import { useGame } from '@/lib/game-store';
+import { friendStickerId, HEARTS_FOR_STICKER } from '@/lib/resident-logic';
 
 // The Daily Loop's progress (Food bar, chores, today's gumball turn, stickers)
 // is saved on the phone for now. Coins always go through the game store, so the
@@ -42,6 +43,8 @@ type LifeSave = {
   bonusClaimed: boolean;
   gumballDay: string | null;
   stickers: string[];
+  /** Hearts with each town resident, and the last day you brought them a snack. */
+  friends: Record<string, { hearts: number; lastGift: string | null }>;
 };
 
 function newSave(now: number): LifeSave {
@@ -53,6 +56,7 @@ function newSave(now: number): LifeSave {
     bonusClaimed: false,
     gumballDay: null,
     stickers: [],
+    friends: {},
   };
 }
 
@@ -73,7 +77,10 @@ type TownLife = {
   allChoresClaimed: boolean;
   gumballReady: boolean;
   stickers: string[];
+  friends: LifeSave['friends'];
   record(event: TownEvent): void;
+  /** Buys a resident today's snack. Returns an error message, or null when it worked. */
+  giftResident(id: string, snackSlug: string): Promise<string | null>;
   /** Each of these returns an error message, or null when it worked. */
   claimChore(id: string): Promise<string | null>;
   claimAllChoresBonus(): Promise<string | null>;
@@ -210,6 +217,31 @@ export function TownLifeProvider({ children }: { children: ReactNode }) {
     [update],
   );
 
+  const giftResident = useCallback(
+    async (id: string, snackSlug: string) => {
+      const today = dayKey();
+      if (live.friends[id]?.lastGift === today) return 'You already brought them a snack today.';
+      try {
+        await buySnack(snackSlug);
+        update((s) => {
+          const hearts = Math.min(HEARTS_FOR_STICKER, (s.friends[id]?.hearts ?? 0) + 1);
+          const sticker = friendStickerId(id);
+          const earned = hearts >= HEARTS_FOR_STICKER && !s.stickers.includes(sticker);
+          return {
+            ...s,
+            friends: { ...s.friends, [id]: { hearts, lastGift: today } },
+            stickers: earned ? [...s.stickers, sticker] : s.stickers,
+            chores: recordChoreEvent(s.chores, 'gift'),
+          };
+        });
+        return null;
+      } catch (error) {
+        return errorText(error);
+      }
+    },
+    [buySnack, live.friends, update],
+  );
+
   const food = currentFood(live.food, now);
   const chores: ChoreRow[] = live.chores.flatMap((c) => {
     const def = choreDef(c.id);
@@ -224,6 +256,8 @@ export function TownLifeProvider({ children }: { children: ReactNode }) {
     allChoresClaimed: chores.every((c) => c.claimed),
     gumballReady,
     stickers: live.stickers,
+    friends: live.friends,
+    giftResident,
     record,
     claimChore,
     claimAllChoresBonus,

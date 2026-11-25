@@ -87,7 +87,8 @@ export type TownEvent =
   | 'buy'
   | 'decorate'
   | 'outfit'
-  | 'sticker';
+  | 'sticker'
+  | 'gift';
 
 export type ChoreDef = { id: string; text: string; event: TownEvent; target: number };
 
@@ -101,6 +102,7 @@ export const CHORE_POOL: ChoreDef[] = [
   { id: 'eat', text: 'Grab a snack at the Snack Shack', event: 'eat', target: 1 },
   { id: 'decorate', text: 'Place or move something in your room', event: 'decorate', target: 1 },
   { id: 'outfit', text: 'Try on a new look', event: 'outfit', target: 1 },
+  { id: 'gift', text: 'Bring a neighbor the snack they asked for', event: 'gift', target: 1 },
 ];
 
 export const CHORES_PER_DAY = 3;

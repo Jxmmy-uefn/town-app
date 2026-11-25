@@ -53,6 +53,7 @@ These were picked from a look at what kept players coming back to classic social
 - **Snack Shack**: buy 2000s snacks to fill the Food bar, or work a 45-second shift in the *Order Up!* job for coins.
 - **Sticker Book**: gumball stickers, plus one sticker hidden somewhere in town that moves every two weeks. Old spots come back around.
 - **Monthly Parties**: once a month the map dresses up and everyone can pick up a free gift.
+- **Town residents**: Blip, Gloria Glitter, Mayor Marbles, Skye and Chef Tater each hang out in one place, say something new every day, and ask for a snack. Bring it five times and they give you their own sticker.
 - **Monthly Shop collections**: a themed set of 2000s clothes and furniture each month. Collections take turns, so each one comes back every few months.
 - **The Bubble Bulletin**: a weekly newspaper at Town Hall with party news, shop news, a sticker clue, a joke and a tip.
 

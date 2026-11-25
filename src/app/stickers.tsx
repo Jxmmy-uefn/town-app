@@ -60,6 +60,12 @@ export default function StickerBookScreen() {
           list={STICKERS.filter((s) => s.source === 'gumball')}
           owned={stickers}
         />
+        <Page
+          title="From friends"
+          blurb="Bring a town resident the snack they ask for each day. After five visits you're best friends, and they give you their own sticker."
+          list={STICKERS.filter((s) => s.source === 'friend')}
+          owned={stickers}
+        />
       </ScrollView>
     </ThemedView>
   );
@@ -72,8 +78,7 @@ const styles = StyleSheet.create({
   pageHead: { flexDirection: 'row', justifyContent: 'space-between' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   slot: {
-    width: '22%',
-    flexGrow: 1,
+    width: '23%',
     aspectRatio: 0.85,
     borderRadius: Spacing.three,
     alignItems: 'center',
